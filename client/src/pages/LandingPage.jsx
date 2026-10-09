@@ -6,7 +6,6 @@ import {
   Compass,
   ArrowRight,
   TrendingUp,
-  Shield,
   ShieldCheck,
   Lock,
   Sparkles,
@@ -18,12 +17,10 @@ import {
   PieChart,
   Bot,
   Play,
-  Calendar,
   Check,
-  FileText,
-  SlidersHorizontal,
-  CreditCard,
-  Zap
+  FileSpreadsheet,
+  Zap,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -34,24 +31,24 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      q: 'Does FinPilot have access to my real bank credentials?',
-      a: 'No. FinPilot is engineered for zero-trust security. You track balances via double-entry ledger bookkeeping and manual imports. We do not require or store your net banking credentials or bank sync passwords, preventing external liability.'
+      q: 'Does FinPilot require access to my online banking credentials?',
+      a: 'No. FinPilot is engineered with a privacy-first, zero-trust architecture. You track balances via a double-entry ledger and manual account entries. We do not store net banking passwords or use automated third-party scrapers, keeping your credentials safe.'
     },
     {
       q: 'How does the AI Analyst make affordability decisions?',
-      a: 'The AI Analyst does not invent or hallucinate numbers. It passes your query into a deterministic mathematical engine in integer paise minor units. It reserves your 3x emergency fund and active 30-day bill commitments, calculating exact monthly surplus availability.'
+      a: 'The AI Analyst does not invent or hallucinate numbers. It passes your query into a deterministic mathematical engine calculated in integer paise minor units. It reserves your 3x emergency fund and active 30-day bill commitments, calculating exact monthly surplus availability.'
     },
     {
-      q: 'Can I track Indian assets like SGB, PPF, EPF, and Mutual Funds?',
-      a: 'Yes. FinPilot natively supports Indian asset classes including Sovereign Gold Bonds (SGB), Public Provident Fund (PPF), Employee Provident Fund (EPF), Fixed/Recurring Deposits, Mutual Funds, and Index ETFs.'
+      q: 'Can I track Indian asset categories like SGB, PPF, Deposits, and Mutual Funds?',
+      a: 'Yes. FinPilot natively supports Indian asset classes including Sovereign Gold Bonds (SGB), Public Provident Fund (PPF), Fixed/Recurring Deposits, Mutual Funds, and Index ETFs based on your recorded purchase prices and units.'
     },
     {
       q: 'What happens if I downgrade from Pro to the Free plan?',
-      a: 'All your recorded historical data, accounts, and transactions remain completely preserved and accessible. Features like advanced amortization schedules and unlimited AI queries will transition into read-only or free tier thresholds.'
+      a: 'All your recorded historical data, accounts, and transactions remain completely preserved and accessible. Advanced modules like loan amortization schedules and unlimited AI queries will transition into free tier thresholds.'
     },
     {
       q: 'Is my financial data encrypted and private?',
-      a: 'All data is encrypted in transit via TLS 1.3 and at rest using AES-256. FinPilot enforces strict user-scoped tenancy with zero third-party monetization or PII advertising sharing.'
+      a: 'All data is encrypted in transit via TLS 1.3 and at rest using AES-256. FinPilot enforces strict user-scoped tenancy with zero third-party monetization or advertising sharing.'
     }
   ];
 
@@ -85,7 +82,7 @@ export default function LandingPage() {
 
           {/* Subtitle */}
           <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
-            Autonomous personal finance management for forward-looking individuals. Track multi-bank cash flow, run automated affordability simulations, manage debt amortisation, and protect future reserves with mathematical precision.
+            Autonomous personal finance management for forward-looking individuals. Track multi-account cash flow, run automated affordability simulations, manage debt amortisation, and protect future reserves with mathematical precision.
           </p>
 
           {/* Hero CTAs */}
@@ -103,7 +100,7 @@ export default function LandingPage() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 font-semibold text-sm border border-white/[0.08] transition-colors"
             >
               <Play className="w-3.5 h-3.5 fill-slate-300 text-slate-300" />
-              <span>Explore Live Demo</span>
+              <span>Explore Live Preview</span>
             </a>
           </div>
 
@@ -135,12 +132,12 @@ export default function LandingPage() {
                   <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
                   <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
                   <span className="ml-3 text-xs font-mono text-slate-400">
-                    FinPilot Super-Executive Workspace • v2.4 Live
+                    FinPilot Super-Executive Workspace • v2.4
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-                  <span className="text-[11px] font-mono text-slate-400">Status: All Feeds Synchronised</span>
+                  <span className="text-[11px] font-mono text-slate-400">Status: Ledger Synchronised & Verified</span>
                 </div>
               </div>
 
@@ -327,7 +324,7 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. METRICS / SOCIAL PROOF STRIP */}
+      {/* 3. VERIFIED ARCHITECTURAL METRICS BAR */}
       {/* ========================================================================= */}
       <section className="py-14 border-y border-white/[0.06] bg-[#070B13]/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -335,44 +332,44 @@ export default function LandingPage() {
             {/* Stat 1 */}
             <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
               <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
-                ₹150Cr+
+                0.00%
               </div>
-              <div className="text-sm font-bold text-slate-200">Tracked Assets</div>
+              <div className="text-sm font-bold text-slate-200">Floating-Point Error</div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Real-time monitoring across user-connected assets
+                Strict integer paise precision across all currency calculations
               </p>
             </div>
 
             {/* Stat 2 */}
             <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
               <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
-                99.4%
+                100%
               </div>
-              <div className="text-sm font-bold text-slate-200">Simulation Accuracy</div>
+              <div className="text-sm font-bold text-slate-200">Deterministic Math</div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Zero floating-point math error tolerance
+                Constrained algorithms with zero AI hallucination or fabricated figures
               </p>
             </div>
 
             {/* Stat 3 */}
             <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
               <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
-                3.4x
+                3x
               </div>
-              <div className="text-sm font-bold text-slate-200">Avg Goal Speed</div>
+              <div className="text-sm font-bold text-slate-200">Emergency Reserve Guard</div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Accelerated milestone attainment vs DIY methods
+                Automated safety ring-fencing before any discretionary simulation
               </p>
             </div>
 
             {/* Stat 4 */}
             <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
               <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
-                4.9/5
+                256-Bit
               </div>
-              <div className="text-sm font-bold text-slate-200">User Rating</div>
+              <div className="text-sm font-bold text-slate-200">Security & Privacy</div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Reviewed by 2,500+ forward-looking users
+                User-scoped encrypted tenancy with zero data monetization
               </p>
             </div>
           </div>
@@ -412,7 +409,7 @@ export default function LandingPage() {
                   Deterministic Cash Flow Forecast
                 </h3>
                 <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                  Multi-bank automated aggregation with deterministic categorisation algorithms so you know uncommitted liquidity 60 days ahead.
+                  Multi-account ledger aggregation with deterministic cash flow algorithms so you know uncommitted liquidity 60 days ahead.
                 </p>
               </div>
 
@@ -481,13 +478,13 @@ export default function LandingPage() {
                   Portfolio & Leverage Hub
                 </h3>
                 <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                  Track mutual funds, equity portfolios, SGBs, and alternative assets in a unified ledger. Gain deep visibility into asset allocation and net-worth trajectories.
+                  Track mutual funds, equity holdings, SGBs, and alternative assets in a unified ledger. Gain deep visibility into asset allocation and net-worth trajectories.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs flex items-center justify-between">
                 <span className="text-slate-400">Consolidated Net Worth:</span>
-                <span className="font-mono text-amber-400 font-bold">Real-time NAV Feeds</span>
+                <span className="font-mono text-amber-400 font-bold">Unified Portfolio Tracking</span>
               </div>
             </div>
           </div>
@@ -509,7 +506,7 @@ export default function LandingPage() {
                 The Intelligence Layer: Your personal CFA in your pocket.
               </h2>
               <p className="text-base text-slate-400 leading-relaxed">
-                Driven by offline deterministic models and LLMs. FinPilot's AI Analyst is constrained by mathematical logic—no hallucinations, no fabricated numbers. Every simulation runs through rigorous accounting equations.
+                Driven by deterministic finance models and structured AI prompts. FinPilot's AI Analyst is constrained by mathematical logic—no hallucinations, no fabricated numbers. Every simulation runs through rigorous accounting equations.
               </p>
 
               {/* 3 Pillars / Capabilities List */}
@@ -765,7 +762,7 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
-                    <span>Priority CSV & PDF financial exports</span>
+                    <span>Formula-protected CSV financial exports</span>
                   </div>
                 </div>
               </div>
@@ -842,7 +839,7 @@ export default function LandingPage() {
 
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#05DF85]/10 border border-[#05DF85]/30 text-[#05DF85] text-xs font-semibold mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-              <span>Built for ambitious wealth</span>
+              <span>Built for modern financial clarity</span>
             </div>
 
             <h2 className="text-3xl sm:text-5xl font-serif text-white tracking-tight max-w-2xl mx-auto mb-4 leading-tight">
@@ -850,7 +847,7 @@ export default function LandingPage() {
             </h2>
 
             <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
-              Join thousands of forward-thinking individuals who use FinPilot to build sustainable liquidity, eliminate debt, and grow net worth.
+              Take control with mathematical precision: track sustainable liquidity, manage debt amortisation, and grow net worth with zero guesswork.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
@@ -862,11 +859,10 @@ export default function LandingPage() {
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </Link>
               <a
-                href="#faq"
+                href="#features"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 font-semibold text-sm border border-white/[0.08]"
               >
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span>Schedule a Consultation</span>
+                <span>Explore Architecture</span>
               </a>
             </div>
           </div>

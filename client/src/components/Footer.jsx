@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Shield, Lock, FileText, ArrowUpRight } from 'lucide-react';
+import { Compass, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -16,7 +16,7 @@ export default function Footer() {
               <span className="text-xl font-bold text-white tracking-tight">FinPilot</span>
             </Link>
             <p className="text-slate-400 text-sm max-w-sm leading-relaxed">
-              Autonomous personal finance management for forward-looking individuals. Track multi-bank cashflow, run automated simulations, and build lasting net worth.
+              Autonomous personal finance management for forward-looking individuals. Track multi-account cashflow, run automated simulations, and build lasting net worth.
             </p>
             <div className="pt-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-slate-400 font-mono">
@@ -34,7 +34,7 @@ export default function Footer() {
               <li><a href="#features" className="hover:text-white transition-colors">Personal Cashflow</a></li>
               <li><a href="#features" className="hover:text-white transition-colors">Debt Amortization</a></li>
               <li><a href="#ai-analyst" className="hover:text-white transition-colors">Intelligence Engine</a></li>
-              <li><a href="#solutions" className="hover:text-white transition-colors">Architecture</a></li>
+              <li><a href="#features" className="hover:text-white transition-colors">Architecture</a></li>
               <li><a href="#pricing" className="hover:text-white transition-colors">Membership Plans</a></li>
             </ul>
           </div>
@@ -45,10 +45,9 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li><a href="#faq" className="hover:text-white transition-colors">Knowledge Base & FAQ</a></li>
-              <li><a href="#security" className="hover:text-white transition-colors">Security Architecture</a></li>
-              <li><a href="#contact" className="hover:text-white transition-colors">Contact Support</a></li>
-              <li><a href="#release" className="hover:text-white transition-colors">Release Notes</a></li>
-              <li><a href="#status" className="hover:text-white transition-colors flex items-center gap-1">System Status <ArrowUpRight className="w-3 h-3 text-slate-500" /></a></li>
+              <li><a href="#features" className="hover:text-white transition-colors">Security Architecture</a></li>
+              <li><Link to="/register" className="hover:text-white transition-colors">Workspace Access</Link></li>
+              <li><a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a></li>
             </ul>
           </div>
 
@@ -57,16 +56,15 @@ export default function Footer() {
               Legal & Trust
             </h4>
             <ul className="space-y-2.5 text-sm">
-              <li><a href="#privacy" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#terms" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="#faq" className="hover:text-white transition-colors">Privacy Architecture</a></li>
+              <li><a href="#faq" className="hover:text-white transition-colors">Zero-Trust Security</a></li>
               <li><a href="#disclaimer" className="hover:text-white transition-colors">Regulatory Disclaimers</a></li>
-              <li><a href="#security" className="hover:text-white transition-colors">Security Disclosures</a></li>
             </ul>
           </div>
         </div>
 
-        {/* Regulatory Disclaimer Box from Stitch Design */}
-        <div className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.06] text-xs text-slate-400 leading-relaxed space-y-2 mb-10">
+        {/* Regulatory Disclaimer Box */}
+        <div id="disclaimer" className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.06] text-xs text-slate-400 leading-relaxed space-y-2 mb-10">
           <p className="font-semibold text-slate-300">
             Financial Advice and Regulatory Disclaimer:
           </p>
@@ -79,9 +77,9 @@ export default function Footer() {
         <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} FinPilot Technologies Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <a href="#privacy" className="hover:text-slate-300 transition-colors">Privacy</a>
+            <a href="#faq" className="hover:text-slate-300 transition-colors">Privacy</a>
             <span>•</span>
-            <a href="#terms" className="hover:text-slate-300 transition-colors">Terms</a>
+            <a href="#faq" className="hover:text-slate-300 transition-colors">Security</a>
             <span>•</span>
             <a href="#disclaimer" className="hover:text-slate-300 transition-colors">SEBI/Financial Disclosures</a>
           </div>
