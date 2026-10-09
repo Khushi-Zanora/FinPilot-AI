@@ -38,22 +38,39 @@ export async function apiRequest(endpoint, options = {}) {
     }
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include'
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include'
+    });
+  } catch (netErr) {
+    const error = new Error('Unable to connect to the FinPilot API server. Please ensure the server is running.');
+    error.code = 'NETWORK_ERROR';
+    throw error;
+  }
 
-  const data = await response.json().catch(() => ({
-    success: false,
-    error: { message: 'Failed to parse JSON response from server' }
-  }));
+  const data = await response.json().catch(() => null);
 
-  if (!response.ok || !data.success) {
-    const error = new Error(data.error?.message || `HTTP ${response.status}: Request failed`);
-    error.code = data.error?.code;
+  if (!response.ok || (data && !data.success)) {
+    let errorMsg = data?.error?.message;
+    if (!errorMsg && data?.error?.details && data.error.details.length > 0) {
+      errorMsg = data.error.details.map((d) => d.message).join('. ');
+    }
+    if (!errorMsg) {
+      if (response.status === 401) errorMsg = 'Invalid credentials or session expired.';
+      else if (response.status === 403) errorMsg = 'Access forbidden or invalid security token.';
+      else if (response.status === 404) errorMsg = 'Requested resource not found.';
+      else if (response.status === 409) errorMsg = 'An account or entry with these details already exists.';
+      else if (response.status === 429) errorMsg = 'Too many requests. Please wait a moment.';
+      else errorMsg = `HTTP ${response.status}: Request failed`;
+    }
+
+    const error = new Error(errorMsg);
+    error.code = data?.error?.code || `HTTP_${response.status}`;
     error.status = response.status;
-    error.details = data.error?.details;
+    error.details = data?.error?.details;
     throw error;
   }
 

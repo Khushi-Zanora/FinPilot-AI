@@ -50,12 +50,9 @@ export default function RegisterPage() {
 
     setLoading(true);
     setError('');
-
     try {
       const res = await register({ name, email, password, currency: 'INR' });
-      if (res.success) {
-        navigate('/onboarding');
-      } else {
+      if (res?.success) {
         navigate('/onboarding');
       }
     } catch (err) {

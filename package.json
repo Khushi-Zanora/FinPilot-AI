@@ -5,8 +5,11 @@
   "description": "FinPilot - Full-stack Personal Finance Management SaaS",
   "scripts": {
     "server:dev": "npm --prefix server run dev",
+    "server:start": "npm --prefix server run start",
     "server:test": "npm --prefix server run test",
     "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "client:preview": "npm --prefix client run preview",
     "test": "npm --prefix server run test"
   }
 }
