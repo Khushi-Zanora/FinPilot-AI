@@ -31,7 +31,7 @@ const transactionSchema = new mongoose.Schema(
     accountId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Account',
-      required: true,
+      default: null,
       index: true
     },
     toAccountId: {

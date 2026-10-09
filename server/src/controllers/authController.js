@@ -74,7 +74,8 @@ export async function register(req, res, next) {
       success: true,
       message: 'Registration successful',
       data: {
-        user: user.toSafeObject()
+        user: user.toSafeObject(),
+        token
       }
     });
   } catch (err) {
@@ -116,7 +117,8 @@ export async function login(req, res, next) {
       success: true,
       message: 'Login successful',
       data: {
-        user: user.toSafeObject()
+        user: user.toSafeObject(),
+        token
       }
     });
   } catch (err) {

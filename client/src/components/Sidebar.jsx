@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   LayoutDashboard,
   Landmark,
@@ -23,6 +24,23 @@ import {
 export default function Sidebar() {
   const { user, isPremium, logout } = useAuth();
   const navigate = useNavigate();
+  const [currentMonthExpensePaise, setCurrentMonthExpensePaise] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadBurn() {
+      try {
+        const res = await apiRequest('/dashboard/summary');
+        if (mounted && res.success && res.data?.currentMonth) {
+          setCurrentMonthExpensePaise(res.data.currentMonth.expensePaise || 0);
+        }
+      } catch (err) {
+        // Silently keep 0 if offline or error
+      }
+    }
+    loadBurn();
+    return () => { mounted = false; };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -42,7 +60,7 @@ export default function Sidebar() {
     },
     {
       title: 'WEALTH & PROTECTION',
-      badge: 'PRO',
+      badge: isPremium ? 'PRO' : undefined,
       items: [
         { to: '/workspace/loans', label: 'Loans & EMIs', icon: CreditCard },
         { to: '/workspace/investments', label: 'Investments', icon: TrendingUp },
@@ -66,13 +84,8 @@ export default function Sidebar() {
     }
   ];
 
-  // Live burn meter calculation (₹48,250 of ₹65,000 = 74.2%)
-  const currentBurn = 48250;
-  const burnCap = 65000;
-  const burnPercent = 74.2;
-
-  const displayName = user?.name || 'Arjun Sharma';
-  const displayEmail = user?.email || 'arjun@finpilot.io';
+  const displayName = user?.name || 'FinPilot User';
+  const displayEmail = user?.email || '';
 
   return (
     <aside className="w-64 bg-[#05080E] border-r border-white/[0.08] flex flex-col shrink-0 h-screen sticky top-0 overflow-y-auto select-none font-sans z-30">
@@ -84,8 +97,8 @@ export default function Sidebar() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-bold tracking-tight text-white text-base">FinPilot</span>
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-[#05DF85] border border-emerald-500/30">
-              PRO
+            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${isPremium ? 'bg-emerald-500/20 text-[#05DF85] border-emerald-500/30' : 'bg-white/[0.05] text-slate-400 border-white/[0.08]'}`}>
+              {isPremium ? 'PRO' : 'FREE'}
             </span>
           </div>
         </NavLink>
@@ -147,37 +160,30 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* Monthly Burn Gauge Card */}
+      {/* Monthly Spent / Summary Card */}
       <div className="p-3 border-t border-white/[0.06] bg-[#080D16]">
-        <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.06] space-y-1.5">
+        <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.06] space-y-1">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 font-medium">Monthly Burn</span>
-            <span className="font-mono text-[#05DF85] font-bold">{burnPercent}%</span>
+            <span className="text-slate-400 font-medium">Monthly Outflow</span>
+            <span className="font-mono text-white font-bold">{formatCurrency(currentMonthExpensePaise)}</span>
           </div>
-          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-[#05DF85] h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(5,223,133,0.5)]"
-              style={{ width: `${Math.min(burnPercent, 100)}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-0.5">
-            <span>₹{currentBurn.toLocaleString('en-IN')}</span>
-            <span className="text-slate-500">₹{burnCap.toLocaleString('en-IN')}</span>
+          <div className="text-[10px] text-slate-500 font-mono">
+            {currentMonthExpensePaise === 0 ? 'No recorded expenses this month' : 'Based on recorded transactions'}
           </div>
         </div>
 
-        {/* Arjun Sharma / User Card */}
+        {/* User Card */}
         <div className="mt-2.5 p-2 rounded-lg bg-[#0D1422] border border-white/[0.06] flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-700 flex items-center justify-center text-slate-950 font-bold text-xs ring-1 ring-white/10 shrink-0">
-              {displayName.charAt(0)}
+              {displayName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
               <div className="text-xs font-semibold text-white truncate leading-tight">
                 {displayName}
               </div>
               <div className="text-[10px] font-mono text-slate-500 truncate leading-tight">
-                {displayEmail}
+                {displayEmail || 'Verified User'}
               </div>
             </div>
           </div>

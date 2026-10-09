@@ -19,8 +19,9 @@ const envSchema = z.object({
   ENABLE_MOCK_PAYMENTS: z.string().default('true').transform((val) => val === 'true'),
 
   // AI Service
-  AI_PROVIDER: z.enum(['mock', 'gemini', 'openai']).default('mock'),
+  AI_PROVIDER: z.string().default('gemini'),
   AI_API_KEY: z.string().optional().default(''),
+  GEMINI_API_KEY: z.string().optional().default(''),
   AI_MODEL_NAME: z.string().default('gemini-1.5-flash'),
 
   // Notifications
@@ -28,7 +29,13 @@ const envSchema = z.object({
   FROM_EMAIL: z.string().default('noreply@finpilot.app')
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
+const rawEnv = {
+  ...process.env,
+  AI_API_KEY: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
+  AI_PROVIDER: process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY || process.env.AI_API_KEY ? 'gemini' : 'gemini')
+};
+
+const parsedEnv = envSchema.safeParse(rawEnv);
 
 if (!parsedEnv.success) {
   console.error('❌ Invalid environment configuration:', parsedEnv.error.format());

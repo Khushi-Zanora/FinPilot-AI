@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import WorkspaceHeader from '../components/WorkspaceHeader.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   TrendingUp,
   PieChart,
@@ -16,532 +17,427 @@ import {
   ShieldCheck,
   Building,
   Layers,
+  Trash2,
   X
 } from 'lucide-react';
 
 export default function InvestmentsPage() {
-  const [activeRange, setActiveRange] = useState('1Y');
+  const [investments, setInvestments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [taxHarvested, setTaxHarvested] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const [holdings, setHoldings] = useState([
-    {
-      id: 'h-1',
-      name: 'Reliance Industries',
-      ticker: 'RELIANCE.NS',
-      tag: 'Large Cap Energy',
-      class: 'Equity',
-      category: 'stocks',
-      qty: 250,
-      avgPrice: 2300.00,
-      ltp: 2745.50,
-      dayChange: '+1.20%',
-      currentValue: 686375.00,
-      pnl: '+₹1,11,375.00 (+19.37%)'
-    },
-    {
-      id: 'h-2',
-      name: 'Parag Parikh Flexi Cap Fund',
-      ticker: 'DIRECT GROWTH',
-      tag: 'SIP ₹25k/mo',
-      class: 'Mutual Fund',
-      category: 'mf',
-      qty: 14210.38,
-      avgPrice: 48.50,
-      ltp: 76.84,
-      dayChange: '+0.48%',
-      currentValue: 1091896.00,
-      pnl: '+₹4,02,896.00 (+58.43%)'
-    },
-    {
-      id: 'h-3',
-      name: 'Infosys Limited',
-      ticker: 'INFY.NS',
-      tag: 'IT Services Large Cap',
-      class: 'Equity',
-      category: 'stocks',
-      qty: 400,
-      avgPrice: 1420.00,
-      ltp: 1865.20,
-      dayChange: '-0.30%',
-      currentValue: 746080.00,
-      pnl: '+₹1,78,080.00 (+31.35%)'
-    },
-    {
-      id: 'h-4',
-      name: 'HDFC Bank Limited',
-      ticker: 'HDFCBANK.NS',
-      tag: 'Private Banking',
-      class: 'Equity',
-      category: 'stocks',
-      qty: 300,
-      avgPrice: 1510.00,
-      ltp: 1682.00,
-      dayChange: '+0.80%',
-      currentValue: 504600.00,
-      pnl: '+₹51,600.00 (+11.39%)'
-    },
-    {
-      id: 'h-5',
-      name: 'Vanguard Total Stock Market ETF',
-      ticker: 'VTI (NYSE)',
-      tag: 'via DriveWealth / Vested',
-      class: 'US Stocks',
-      category: 'us',
-      qty: 22,
-      avgPrice: 215.00,
-      ltp: 282.40,
-      dayChange: '+0.75%',
-      currentValue: 518940.00,
-      pnl: '+₹1,23,940.00 (+31.35%)'
-    },
-    {
-      id: 'h-6',
-      name: 'Sovereign Gold Bond 2028-VI',
-      ticker: 'SGBOCT28',
-      tag: '2.5% Tax-Free Coupon',
-      class: 'Gold Bond',
-      category: 'gold',
-      qty: 45,
-      avgPrice: 5120.00,
-      ltp: 7140.00,
-      dayChange: '+0.35%',
-      currentValue: 321300.00,
-      pnl: '+₹90,900.00 (+39.45%)'
-    },
-    {
-      id: 'h-7',
-      name: 'Nippon India Small Cap Fund',
-      ticker: 'DIRECT GROWTH',
-      tag: 'SIP ₹10k/mo',
-      class: 'Mutual Fund',
-      category: 'mf',
-      qty: 3120,
-      avgPrice: 92.00,
-      ltp: 154.20,
-      dayChange: '+1.80%',
-      currentValue: 481104.00,
-      pnl: '+₹1,94,064.00 (+67.61%)'
+  const [invForm, setInvForm] = useState({
+    name: '',
+    assetClass: 'mutual_fund',
+    quantity: '1',
+    buyPrice: '',
+    currentPrice: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    loadInvestments();
+  }, []);
+
+  async function loadInvestments() {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await apiRequest('/investments');
+      if (res.success) {
+        const raw = res.data?.investments || res.data?.holdings || [];
+        const mapped = raw.map((inv) => ({
+          ...inv,
+          assetClass: inv.assetClass || inv.assetType || 'mutual_fund',
+          quantity: inv.quantity || inv.units || 1,
+          buyPricePaise: inv.buyPricePaise || inv.averageBuyPricePaise || 0,
+          currentPricePaise: inv.currentPricePaise || inv.currentNavPricePaise || inv.buyPricePaise || inv.averageBuyPricePaise || 0
+        }));
+        setInvestments(mapped);
+      } else {
+        setInvestments([]);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load investments.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }
 
-  const [newHolding, setNewHolding] = useState({ name: '', class: 'Equity', qty: '', avgPrice: '', ltp: '' });
-
-  const handleAddHolding = (e) => {
+  const handleCreateInvestment = async (e) => {
     e.preventDefault();
-    if (!newHolding.name || !newHolding.qty || !newHolding.avgPrice) return;
-    const q = parseFloat(newHolding.qty);
-    const avg = parseFloat(newHolding.avgPrice);
-    const currLtp = parseFloat(newHolding.ltp) || avg;
-    const holdingObj = {
-      id: `h-${Date.now()}`,
-      name: newHolding.name,
-      ticker: 'CUSTOM',
-      tag: 'User Entry',
-      class: newHolding.class,
-      category: newHolding.class === 'Mutual Fund' ? 'mf' : 'stocks',
-      qty: q,
-      avgPrice: avg,
-      ltp: currLtp,
-      dayChange: '0.00%',
-      currentValue: q * currLtp,
-      pnl: `+₹${((q * currLtp) - (q * avg)).toFixed(2)}`
-    };
-    setHoldings([...holdings, holdingObj]);
-    setShowAddModal(false);
-    setNewHolding({ name: '', class: 'Equity', qty: '', avgPrice: '', ltp: '' });
+    if (!invForm.name || !invForm.buyPrice) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const qty = parseFloat(invForm.quantity || '1');
+      const buyPricePaise = Math.round(parseFloat(invForm.buyPrice) * 100);
+      const currentPricePaise = invForm.currentPrice
+        ? Math.round(parseFloat(invForm.currentPrice) * 100)
+        : buyPricePaise;
+
+      const res = await apiRequest('/investments', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: invForm.name.trim(),
+          assetClass: invForm.assetClass,
+          quantity: qty,
+          buyPricePaise,
+          currentPricePaise,
+          notes: invForm.notes
+        })
+      });
+
+      if (res.success) {
+        setShowAddModal(false);
+        setInvForm({
+          name: '',
+          assetClass: 'mutual_fund',
+          quantity: '1',
+          buyPrice: '',
+          currentPrice: '',
+          notes: ''
+        });
+        await loadInvestments();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create investment record.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const filteredHoldings = holdings.filter((h) => {
-    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.class.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleDeleteInvestment = async (id, name) => {
+    if (!window.confirm(`Delete investment record "${name}"?`)) return;
+    try {
+      await apiRequest(`/investments/${id}`, { method: 'DELETE' });
+      await loadInvestments();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const filteredInvestments = investments.filter((inv) => {
+    const matchesSearch = (inv.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'stocks') return matchesSearch && h.category === 'stocks';
-    if (activeTab === 'mf') return matchesSearch && h.category === 'mf';
-    if (activeTab === 'us') return matchesSearch && h.category === 'us';
-    if (activeTab === 'gold') return matchesSearch && h.category === 'gold';
+    if (activeTab === 'mf') return matchesSearch && inv.assetClass === 'mutual_fund';
+    if (activeTab === 'equity') return matchesSearch && inv.assetClass === 'equity';
+    if (activeTab === 'debt') return matchesSearch && (inv.assetClass === 'debt' || inv.assetClass === 'gold');
     return matchesSearch;
   });
+
+  // Calculate real metrics
+  const totalInvestedPaise = investments.reduce(
+    (acc, inv) => acc + (inv.buyPricePaise || 0) * (inv.quantity || 1),
+    0
+  );
+  const totalCurrentPaise = investments.reduce(
+    (acc, inv) => acc + (inv.currentPricePaise || inv.buyPricePaise || 0) * (inv.quantity || 1),
+    0
+  );
+  const totalPnlPaise = totalCurrentPaise - totalInvestedPaise;
+  const pnlPercent = totalInvestedPaise > 0 ? ((totalPnlPaise / totalInvestedPaise) * 100).toFixed(1) : 0;
 
   return (
     <div className="flex-1 flex flex-col bg-[#05080E] text-slate-100 font-sans min-h-screen">
       <WorkspaceHeader onRecordTransaction={() => {}} />
 
       <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-        {/* Header */}
+        {/* Title Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">CAPITAL APPRECIATION TELEMETRY</span>
+              <span className="text-[#05DF85] font-semibold">ASSET ALLOCATION</span>
               <span className="text-slate-600">//</span>
-              <span>BROKER & CAS AGGREGATOR</span>
+              <span>INVESTMENTS & PORTFOLIO</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              Investments & Portfolio
+              Investments & Capital Assets
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#080D16] border border-white/[0.08] text-xs font-mono">
-              {['1D', '1W', '1M', '6M', '1Y', '3Y', 'MAX'].map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setActiveRange(r)}
-                  className={`px-2.5 py-1 rounded transition-all ${
-                    activeRange === r ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Deploy Capital</span>
+              <span>Add Investment</span>
             </button>
           </div>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* 3 Real KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL PORTFOLIO VALUE</div>
-            <div className="text-2xl font-mono font-bold text-white">₹58,42,850<span className="text-base text-slate-400 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>Invested: ₹41,20,000</span>
-              <span className="text-[#05DF85] font-bold">+₹17,22,850 (+41.82%)</span>
+            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL INVESTED CAPITAL</div>
+            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalInvestedPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              {investments.length} recorded assets
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>PORTFOLIO XIRR / CAGR</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] text-[10px] font-bold">ALPHA +7.19%</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">21.84%</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>vs Nifty 50: 14.65%</span>
-              <span className="text-[#05DF85] font-bold">Exceptional</span>
+            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">CURRENT PORTFOLIO VALUE</div>
+            <div className="text-2xl font-mono font-bold text-[#05DF85]">{formatCurrency(totalCurrentPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Based on recorded unit prices
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">P&L STRATIFICATION [FY 24-25]</div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">+₹14,92,350<span className="text-base text-emerald-300/60 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>Unrealized paper gain</span>
-              <span className="text-slate-400">LTCG: ₹2,38,500</span>
+            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">UNREALIZED PROFIT / LOSS</div>
+            <div className={`text-2xl font-mono font-bold ${totalPnlPaise >= 0 ? 'text-[#05DF85]' : 'text-rose-400'}`}>
+              {totalPnlPaise >= 0 ? '+' : ''}{formatCurrency(totalPnlPaise)} ({pnlPercent}%)
             </div>
-          </div>
-
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-cyan-400 mb-1">SYSTEMATIC FLOW & YIELD</div>
-            <div className="text-2xl font-mono font-bold text-white">₹85,000<span className="text-base text-slate-400 font-normal"> / mo</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>7 Active Monthly SIPs</span>
-              <span className="text-cyan-400">Dividends: ₹42.8k/yr</span>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Manual entries • Not verified live broker feed
             </div>
           </div>
         </div>
 
-        {/* Alpha Trajectory & Asset Allocation Bar */}
-        <div className="p-6 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {/* Search & Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl bg-[#080D16] border border-white/[0.08]">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search investments by name..."
+              className="w-full pl-9 pr-3 py-1.5 bg-[#0D1422] border border-white/[0.08] rounded-lg text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#05DF85]"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 font-mono text-xs overflow-x-auto">
+            {[
+              { id: 'all', label: `All (${investments.length})` },
+              { id: 'mf', label: 'Mutual Funds' },
+              { id: 'equity', label: 'Stocks & Equity' },
+              { id: 'debt', label: 'Debt & Gold' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1 rounded-md transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-[#05DF85] text-slate-950 font-bold'
+                    : 'text-slate-400 hover:text-white bg-[#0D1422]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+            <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-slate-400">Loading investment records...</p>
+          </div>
+        ) : filteredInvestments.length === 0 ? (
+          /* Clean Empty State */
+          <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+              <TrendingUp className="w-6 h-6" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Portfolio Alpha & Growth Trajectory</h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20">
-                  All-time High: ₹59.10L
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">Real-time NAV vs Nifty 50 TRI benchmark comparison</p>
+              <h3 className="text-base font-bold text-white">No Investments Recorded Yet</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                Add your mutual fund SIPs, stocks, sovereign gold bonds, fixed deposits, or crypto assets to track capital allocation.
+              </p>
             </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)]"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add First Investment</span>
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-[#080D16] border border-white/[0.08] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-sans">
+                <thead>
+                  <tr className="border-b border-white/[0.06] bg-[#0D1422]/50 text-slate-400 font-mono text-[10px] uppercase">
+                    <th className="p-3.5 pl-4">Asset Name</th>
+                    <th className="p-3.5">Class</th>
+                    <th className="p-3.5">Units / Qty</th>
+                    <th className="p-3.5">Avg Buy Price</th>
+                    <th className="p-3.5">Current Value</th>
+                    <th className="p-3.5">Gain / Loss</th>
+                    <th className="p-3.5 pr-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {filteredInvestments.map((inv) => {
+                    const totalCost = (inv.buyPricePaise || 0) * (inv.quantity || 1);
+                    const totalVal = (inv.currentPricePaise || inv.buyPricePaise || 0) * (inv.quantity || 1);
+                    const pnl = totalVal - totalCost;
 
-            <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#05DF85]"></span>FinPilot Portfolio +41.82%</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>Nifty 50 TRI +22.40%</span>
+                    return (
+                      <tr key={inv._id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="p-3.5 pl-4 font-semibold text-white">
+                          <div>{inv.name}</div>
+                          {inv.notes && <div className="text-[10px] text-slate-500 font-normal">{inv.notes}</div>}
+                        </td>
+                        <td className="p-3.5 font-mono text-[11px] uppercase text-slate-400">
+                          {inv.assetClass.replace('_', ' ')}
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-300">{inv.quantity || 1}</td>
+                        <td className="p-3.5 font-mono text-slate-300">{formatCurrency(inv.buyPricePaise)}</td>
+                        <td className="p-3.5 font-mono font-bold text-white">{formatCurrency(totalVal)}</td>
+                        <td className={`p-3.5 font-mono font-bold ${pnl >= 0 ? 'text-[#05DF85]' : 'text-rose-400'}`}>
+                          {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+                        </td>
+                        <td className="p-3.5 pr-4 text-right">
+                          <button
+                            onClick={() => handleDeleteInvestment(inv._id, inv.name)}
+                            className="p-1 text-slate-500 hover:text-rose-400"
+                            title="Delete investment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {/* Sparkline curve vector */}
-          <div className="h-32 flex items-end">
-            <svg className="w-full h-28" viewBox="0 0 800 120" fill="none">
-              {/* Benchmark curve */}
-              <path d="M0 100 Q 200 85, 400 70 T 800 50" stroke="#22D3EE" strokeWidth="2" strokeDasharray="4 4" fill="none" />
-              {/* Alpha portfolio curve */}
-              <path d="M0 110 Q 200 80, 400 45 T 800 15" stroke="#05DF85" strokeWidth="3" fill="none" />
-              <circle cx="800" cy="15" r="5" fill="#05DF85" />
-            </svg>
-          </div>
-
-          {/* Asset Allocation Matrix Bar */}
-          <div className="space-y-2 pt-2 border-t border-white/[0.06]">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-400 uppercase">ASSET ALLOCATION MATRIX</span>
-              <span className="text-white font-bold">Total: ₹58,42,850</span>
-            </div>
-
-            <div className="w-full h-2.5 rounded-full bg-slate-800 flex overflow-hidden">
-              <div className="bg-[#05DF85] h-full w-[52.4%]" title="Direct Equity 52.4%"></div>
-              <div className="bg-emerald-400 h-full w-[28.2%]" title="Mutual Funds 28.2%"></div>
-              <div className="bg-cyan-400 h-full w-[9.8%]" title="US Stocks 9.8%"></div>
-              <div className="bg-amber-400 h-full w-[5.5%]" title="Gold 5.5%"></div>
-              <div className="bg-purple-400 h-full w-[4.1%]" title="Debt 4.1%"></div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono text-slate-400 pt-1">
-              <div><span className="text-white font-semibold block">• Direct Equity (52.4%)</span><span>₹30.62L</span></div>
-              <div><span className="text-white font-semibold block">• Mutual Funds (28.2%)</span><span>₹16.48L</span></div>
-              <div><span className="text-white font-semibold block">• US Equities (9.8%)</span><span>₹5.72L</span></div>
-              <div><span className="text-white font-semibold block">• Gold SGB (5.5%)</span><span>₹3.21L</span></div>
-              <div><span className="text-white font-semibold block">• Debt & Cash (4.1%)</span><span>₹2.40L</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Grid: Holdings Table (8 cols) + Right Alpha Copilot (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Holdings Table (8 cols) */}
-          <div className="lg:col-span-8 rounded-xl bg-[#080D16] border border-white/[0.08] overflow-hidden space-y-2">
-            {/* Filter Tabs & Search */}
-            <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-1 font-mono text-xs overflow-x-auto">
-                {[
-                  { id: 'all', label: `All Holdings (${holdings.length})` },
-                  { id: 'stocks', label: 'Stocks' },
-                  { id: 'mf', label: 'Mutual Funds' },
-                  { id: 'us', label: 'US Global' },
-                  { id: 'gold', label: 'Gold SGB' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1 rounded-md transition-all whitespace-nowrap ${
-                      activeTab === tab.id ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400 hover:text-white bg-[#0D1422]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter ticker or asset..."
-                  className="pl-8 pr-3 py-1.5 bg-[#0D1422] border border-white/[0.08] rounded-lg text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#05DF85]"
-                />
-              </div>
-            </div>
-
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 px-3.5 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-500 bg-[#0D1422]/50">
-              <span className="col-span-5">INSTRUMENT / ASSET</span>
-              <span className="col-span-2">CLASS</span>
-              <span className="col-span-2">QTY & AVG</span>
-              <span className="col-span-3 text-right">CURRENT VALUE & P&L</span>
-            </div>
-
-            {/* Table Rows */}
-            <div className="divide-y divide-white/[0.04]">
-              {filteredHoldings.map((h) => (
-                <div key={h.id} className="grid grid-cols-12 gap-2 p-3.5 items-center hover:bg-white/[0.02] transition-colors">
-                  {/* Instrument */}
-                  <div className="col-span-5 min-w-0 pr-2">
-                    <div className="text-xs font-bold text-white truncate">{h.name}</div>
-                    <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">
-                      <span className="text-[#05DF85]">{h.ticker}</span> • {h.tag}
-                    </div>
-                  </div>
-
-                  {/* Class */}
-                  <div className="col-span-2">
-                    <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-slate-300 border border-white/[0.08]">
-                      {h.class}
-                    </span>
-                  </div>
-
-                  {/* Qty & Avg */}
-                  <div className="col-span-2 font-mono text-xs">
-                    <div className="text-white">{h.qty.toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] text-slate-500">@ ₹{h.avgPrice.toLocaleString('en-IN')}</div>
-                  </div>
-
-                  {/* Current Value & P&L */}
-                  <div className="col-span-3 text-right font-mono text-xs">
-                    <div className="font-bold text-white">₹{h.currentValue.toLocaleString('en-IN')}.00</div>
-                    <div className="text-[10px] text-[#05DF85]">{h.pnl}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right: Alpha Copilot & Upcoming Cashflows (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Alpha Copilot Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#05DF85]" />
-                  <h3 className="text-xs font-bold text-white">Alpha Copilot Insights</h3>
-                </div>
-                <span className="text-[10px] font-mono text-slate-400">2 INSIGHTS</span>
-              </div>
-
-              {/* Insight 1: Sector Concentration */}
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] text-xs space-y-1">
-                <div className="font-bold text-rose-300 flex items-center gap-1.5">
-                  <span>IT Concentration Alert (27.4%)</span>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Infosys & US Tech exposure exceeds your 20% sector allocation guideline. Consider trimming or pausing tech SIPs to rebalance into FMCG/Pharma.
-                </p>
-              </div>
-
-              {/* Insight 2: Tax Harvesting Opportunity */}
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-emerald-500/20 text-xs space-y-1">
-                <div className="font-bold text-[#05DF85]">Tax Harvesting Opportunity</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  ₹42,500 of LTCG can be offset against underperforming mid-cap lots before March 31, saving <strong>₹5,310</strong> in tax liabilities.
-                </p>
-                <button
-                  onClick={() => setTaxHarvested(true)}
-                  className="mt-2 w-full py-1.5 rounded-md bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs"
-                >
-                  {taxHarvested ? 'Tax Harvesting Plan Generated ✓' : 'Execute 1-Click Tax Harvest Plan'}
-                </button>
-              </div>
-            </div>
-
-            {/* Upcoming Cash Flows Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-white font-mono uppercase">Upcoming Cash Flows</h3>
-                <span className="text-[10px] font-mono text-slate-500">NEXT 30 DAYS</span>
-              </div>
-
-              <div className="space-y-2.5 text-xs font-mono">
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold">Parag Parikh Flexi Cap</div>
-                    <div className="text-[10px] text-slate-500">05 Nov • Auto-debit SIP</div>
-                  </div>
-                  <div className="text-rose-400 font-bold">-₹25,000</div>
-                </div>
-
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold">Nippon Small Cap Fund</div>
-                    <div className="text-[10px] text-slate-500">10 Nov • Auto-debit SIP</div>
-                  </div>
-                  <div className="text-rose-400 font-bold">-₹10,000</div>
-                </div>
-
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold">SGB Half-Yearly Coupon</div>
-                    <div className="text-[10px] text-slate-500">25 Nov • 2.5% Tax-Free Interest</div>
-                  </div>
-                  <div className="text-[#05DF85] font-bold">+₹4,816</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Deploy Capital Modal */}
+      {/* Add Investment Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#080D16] border border-white/[0.1] rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-[#05DF85]" />
-                <span>Add Holding / Investment</span>
+                <span>Add Investment Asset</span>
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setShowAddModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            <form onSubmit={handleAddHolding} className="space-y-3 font-sans text-xs">
+            <form onSubmit={handleCreateInvestment} className="space-y-4 text-xs font-sans">
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">ASSET / SCHEME NAME</label>
+                <label className="block text-slate-300 font-medium mb-1">Asset Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Tata Consultancy Services"
-                  value={newHolding.name}
-                  onChange={(e) => setNewHolding({ ...newHolding, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
+                  placeholder="e.g. Parag Parikh Flexi Cap Fund, Reliance Industries"
+                  value={invForm.name}
+                  onChange={(e) => setInvForm({ ...invForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">ASSET CLASS</label>
-                <select
-                  value={newHolding.class}
-                  onChange={(e) => setNewHolding({ ...newHolding, class: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
-                >
-                  <option value="Equity">Direct Equity (Stocks)</option>
-                  <option value="Mutual Fund">Mutual Fund</option>
-                  <option value="US Stocks">US Equities (Global)</option>
-                  <option value="Gold Bond">Sovereign Gold Bond (SGB)</option>
-                  <option value="Debt">Debt / Fixed Income</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-mono">QUANTITY / UNITS</label>
+                  <label className="block text-slate-300 font-medium mb-1">Asset Class</label>
+                  <select
+                    value={invForm.assetClass}
+                    onChange={(e) => setInvForm({ ...invForm, assetClass: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  >
+                    <option value="mutual_fund">Mutual Fund (SIP)</option>
+                    <option value="equity">Stock / Equity</option>
+                    <option value="etf">ETF</option>
+                    <option value="debt">Fixed Deposit / Debt</option>
+                    <option value="gold">Gold / SGB</option>
+                    <option value="crypto">Crypto</option>
+                    <option value="real_estate">Real Estate</option>
+                    <option value="other">Other Asset</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Quantity / Units</label>
                   <input
                     type="number"
                     step="0.001"
+                    min="0.001"
                     required
-                    placeholder="e.g. 50"
-                    value={newHolding.qty}
-                    onChange={(e) => setNewHolding({ ...newHolding, qty: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1 font-mono">AVG BUY PRICE (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="e.g. 3200"
-                    value={newHolding.avgPrice}
-                    onChange={(e) => setNewHolding({ ...newHolding, avgPrice: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
+                    value={invForm.quantity}
+                    onChange={(e) => setInvForm({ ...invForm, quantity: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
                   />
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Avg Buy Price (₹) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="e.g. 1500.00"
+                    value={invForm.buyPrice}
+                    onChange={(e) => setInvForm({ ...invForm, buyPrice: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Current Unit Price (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="Same as buy price if empty"
+                    value={invForm.currentPrice}
+                    onChange={(e) => setInvForm({ ...invForm, currentPrice: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Zerodha demat, Monthly SIP"
+                  value={invForm.notes}
+                  onChange={(e) => setInvForm({ ...invForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
                 >
-                  Add to Portfolio
+                  {submitting ? 'Adding...' : 'Save Investment'}
                 </button>
               </div>
             </form>

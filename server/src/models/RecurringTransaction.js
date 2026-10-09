@@ -25,7 +25,7 @@ const recurringTransactionSchema = new mongoose.Schema(
     accountId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Account',
-      required: true
+      default: null
     },
     category: {
       type: String,

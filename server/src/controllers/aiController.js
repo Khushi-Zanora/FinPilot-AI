@@ -5,31 +5,60 @@ import { processFinancialQuery } from '../services/aiService.js';
 
 export const aiChatSchema = z.object({
   body: z.object({
-    message: z.string().min(1, 'Message is required').max(1000),
+    message: z.string().min(1, 'Message is required').max(1000).optional(),
+    query: z.string().min(1, 'Query is required').max(1000).optional(),
     conversationId: z.string().optional().nullable()
+  }).refine((d) => d.message || d.query, {
+    message: 'Either message or query is required',
+    path: ['message']
   })
 });
 
 export const STARTER_PROMPTS = [
   {
+    id: 'monthly_spending',
+    title: 'Spending Breakdown',
+    prompt: 'How much did I spend this month?'
+  },
+  {
+    id: 'biggest_expenses',
+    title: 'Biggest Expenses',
+    prompt: 'What were my biggest expenses?'
+  },
+  {
+    id: 'monthly_income',
+    title: 'Income Received',
+    prompt: 'How much money did I receive this month?'
+  },
+  {
+    id: 'monthly_savings',
+    title: 'Savings Overview',
+    prompt: 'How much did I save this month?'
+  },
+  {
+    id: 'budget_status',
+    title: 'Budget Limits',
+    prompt: 'Am I staying within my budgets?'
+  },
+  {
+    id: 'goal_savings',
+    title: 'Goal Targets',
+    prompt: 'How much do I need to save each month to reach my goal?'
+  },
+  {
     id: 'affordability_phone',
-    title: 'Check Purchase Affordability',
-    prompt: 'Can I afford a ₹75,000 phone in 3 months?'
+    title: 'Purchase Affordability',
+    prompt: 'Can I afford a purchase of ₹75,000 in three months?'
   },
   {
-    id: 'invest_surplus',
-    title: 'Surplus Investment Options',
-    prompt: 'I have ₹75,000 savings, where should I invest in India?'
+    id: 'upcoming_recurring',
+    title: 'Upcoming Income & Bills',
+    prompt: 'What recurring income and bills are coming up?'
   },
   {
-    id: 'monthly_summary',
-    title: 'Monthly Cash Flow Review',
-    prompt: 'How is my financial cash flow looking this month?'
-  },
-  {
-    id: 'emergency_buffer',
-    title: 'Emergency Reserve Check',
-    prompt: 'How much emergency fund do I need based on my expenses?'
+    id: 'invest_options',
+    title: 'Investment Guide (India)',
+    prompt: 'Give me general information about investment options in India.'
   }
 ];
 
@@ -80,7 +109,8 @@ export async function getConversationMessages(req, res, next) {
 
 export async function sendChatMessage(req, res, next) {
   try {
-    const { message, conversationId } = req.body;
+    const userPrompt = req.body.message || req.body.query;
+    const { conversationId } = req.body;
 
     let conversation;
     if (conversationId) {
@@ -90,7 +120,7 @@ export async function sendChatMessage(req, res, next) {
     if (!conversation) {
       conversation = await AIConversation.create({
         userId: req.userId,
-        title: message.slice(0, 40) + (message.length > 40 ? '...' : '')
+        title: userPrompt.slice(0, 40) + (userPrompt.length > 40 ? '...' : '')
       });
     }
 
@@ -99,13 +129,13 @@ export async function sendChatMessage(req, res, next) {
       conversationId: conversation._id,
       userId: req.userId,
       role: 'user',
-      content: message
+      content: userPrompt
     });
 
     // Process deterministic financial AI answer
     const aiResult = await processFinancialQuery({
       userId: req.userId,
-      prompt: message
+      prompt: userPrompt
     });
 
     // Save assistant response
@@ -127,7 +157,11 @@ export async function sendChatMessage(req, res, next) {
       data: {
         conversationId: conversation._id,
         userMessage: userMsg,
-        assistantMessage: assistantMsg
+        assistantMessage: assistantMsg,
+        answer: aiResult.content,
+        response: aiResult.content,
+        intent: aiResult.intent,
+        structuredData: aiResult.structuredData
       }
     });
   } catch (err) {

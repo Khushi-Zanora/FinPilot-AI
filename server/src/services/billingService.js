@@ -47,12 +47,20 @@ export const PLANS = {
   }
 };
 
+function resolvePlan(planId) {
+  if (!planId) return PLANS.premium_monthly;
+  if (PLANS[planId]) return PLANS[planId];
+  if (planId === 'pro_annual' || planId === 'yearly' || planId === 'annual') return PLANS.premium_yearly;
+  if (planId === 'pro_monthly' || planId === 'monthly') return PLANS.premium_monthly;
+  return null;
+}
+
 /**
  * Create an order for checkout.
  * If mock mode is enabled or test mode without live keys, returns mock order.
  */
 export async function createBillingOrder({ userId, planId }) {
-  const plan = PLANS[planId];
+  const plan = resolvePlan(planId);
   if (!plan || plan.pricePaise === 0) {
     throw new Error('Invalid plan selected for checkout');
   }
@@ -90,7 +98,7 @@ export async function verifyAndActivateSubscription({
   razorpaySignature,
   planId
 }) {
-  const plan = PLANS[planId];
+  const plan = resolvePlan(planId) || PLANS.premium_monthly;
   if (!plan) {
     throw new Error('Invalid plan specified');
   }

@@ -19,6 +19,8 @@ import InsurancePage from './pages/InsurancePage.jsx';
 import AiAnalystPage from './pages/AiAnalystPage.jsx';
 import BillingPage from './pages/BillingPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
+import ReportsPage from './pages/ReportsPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
 
 export default function App() {
   return (
@@ -46,8 +48,8 @@ export default function App() {
         <Route path="investments" element={<InvestmentsPage />} />
         <Route path="insurance" element={<InsurancePage />} />
         <Route path="ai" element={<AiAnalystPage />} />
-        <Route path="reports" element={<DashboardPage />} />
-        <Route path="notifications" element={<DashboardPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="billing" element={<BillingPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

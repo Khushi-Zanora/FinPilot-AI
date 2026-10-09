@@ -10,6 +10,11 @@
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "client:preview": "npm --prefix client run preview",
-    "test": "npm --prefix server run test"
+    "test": "npm --prefix server run test",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
   }
 }

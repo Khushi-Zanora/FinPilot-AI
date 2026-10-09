@@ -28,6 +28,16 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers
   };
 
+  // Add Bearer token header if stored (provides dual-auth resilience with HttpOnly cookie)
+  try {
+    const token = localStorage.getItem('finpilot_token');
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // ignore localStorage access errors if blocked
+  }
+
   // Add CSRF token for mutating requests
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes((options.method || 'GET').toUpperCase())) {
     if (!csrfTokenCache) {

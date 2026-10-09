@@ -3,13 +3,20 @@ import { Investment } from '../models/Investment.js';
 
 export const createInvestmentSchema = z.object({
   body: z.object({
-    assetType: z.enum(['mutual_fund', 'equity_stock', 'etf', 'fixed_deposit', 'recurring_deposit', 'gold_sgb', 'govt_securities', 'crypto', 'other']),
     name: z.string().min(1, 'Asset name is required').max(100),
+    assetType: z.string().optional(),
+    assetClass: z.string().optional(),
     symbol: z.string().max(20).optional().default(''),
-    units: z.number().positive('Units must be greater than 0'),
-    averageBuyPricePaise: z.number().int().min(1, 'Buy price must be at least 1 paisa'),
+    units: z.number().positive().optional(),
+    quantity: z.number().positive().optional(),
+    averageBuyPricePaise: z.number().int().min(1).optional(),
+    buyPricePaise: z.number().int().min(1).optional(),
     currentNavPricePaise: z.number().int().min(1).optional().nullable(),
+    currentPricePaise: z.number().int().min(1).optional().nullable(),
     notes: z.string().max(300).optional().default('')
+  }).refine((data) => (data.averageBuyPricePaise || data.buyPricePaise) && (data.units || data.quantity), {
+    message: 'Units/Quantity and Buy Price are required',
+    path: ['averageBuyPricePaise']
   })
 });
 
@@ -17,8 +24,11 @@ export const updateInvestmentSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100).optional(),
     units: z.number().positive().optional(),
+    quantity: z.number().positive().optional(),
     averageBuyPricePaise: z.number().int().min(1).optional(),
+    buyPricePaise: z.number().int().min(1).optional(),
     currentNavPricePaise: z.number().int().min(1).optional().nullable(),
+    currentPricePaise: z.number().int().min(1).optional().nullable(),
     notes: z.string().max(300).optional()
   })
 });
@@ -72,12 +82,22 @@ export async function getInvestments(req, res, next) {
 
 export async function createInvestment(req, res, next) {
   try {
-    const { units, averageBuyPricePaise, currentNavPricePaise } = req.body;
+    const assetType = req.body.assetType || req.body.assetClass || 'mutual_fund';
+    const units = req.body.units || req.body.quantity || 1;
+    const averageBuyPricePaise = req.body.averageBuyPricePaise || req.body.buyPricePaise;
+    const currentNavPricePaise = req.body.currentNavPricePaise || req.body.currentPricePaise || averageBuyPricePaise;
+
     const totalInvestedPaise = Math.round(units * averageBuyPricePaise);
     const currentValuationPaise = currentNavPricePaise ? Math.round(units * currentNavPricePaise) : totalInvestedPaise;
 
     const investment = await Investment.create({
-      ...req.body,
+      name: req.body.name,
+      symbol: req.body.symbol || '',
+      assetType,
+      units,
+      averageBuyPricePaise,
+      currentNavPricePaise,
+      notes: req.body.notes || '',
       userId: req.userId,
       totalInvestedPaise,
       currentValuationPaise,

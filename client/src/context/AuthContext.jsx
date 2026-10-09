@@ -18,9 +18,11 @@ export function AuthProvider({ children }) {
       if (res.success && res.data?.user) {
         setUser(res.data.user);
       } else {
+        localStorage.removeItem('finpilot_token');
         setUser(null);
       }
     } catch (err) {
+      localStorage.removeItem('finpilot_token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -33,6 +35,9 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password })
     });
     if (res.success && res.data?.user) {
+      if (res.data?.token) {
+        localStorage.setItem('finpilot_token', res.data.token);
+      }
       setUser(res.data.user);
     }
     return res;
@@ -44,6 +49,9 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ name, email, password, currency })
     });
     if (res.success && res.data?.user) {
+      if (res.data?.token) {
+        localStorage.setItem('finpilot_token', res.data.token);
+      }
       setUser(res.data.user);
     }
     return res;
@@ -55,6 +63,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
+      localStorage.removeItem('finpilot_token');
       setUser(null);
     }
   }

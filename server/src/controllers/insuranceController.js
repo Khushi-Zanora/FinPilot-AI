@@ -3,14 +3,19 @@ import { InsurancePolicy } from '../models/InsurancePolicy.js';
 
 export const createPolicySchema = z.object({
   body: z.object({
-    policyType: z.enum(['term_life', 'health', 'motor_vehicle', 'home', 'travel', 'critical_illness', 'other']),
-    providerName: z.string().min(1, 'Provider name is required').max(100),
-    policyNumberMasked: z.string().max(50).optional().default(''),
-    premiumAmountPaise: z.number().int().min(1, 'Premium must be at least 1 paisa'),
-    premiumFrequency: z.enum(['monthly', 'quarterly', 'half_yearly', 'yearly', 'single']).default('yearly'),
-    sumInsuredPaise: z.number().int().min(0).default(0),
+    name: z.string().optional(),
+    providerName: z.string().optional(),
+    provider: z.string().optional(),
+    policyType: z.string().optional(),
+    type: z.string().optional(),
+    policyNumberMasked: z.string().max(50).optional(),
+    policyNumber: z.string().max(50).optional(),
+    premiumAmountPaise: z.number().int().min(0).optional().default(0),
+    premiumFrequency: z.string().optional().default('annual'),
+    sumInsuredPaise: z.number().int().min(0).optional(),
+    sumAssuredPaise: z.number().int().min(0).optional(),
     startDate: z.string().datetime().optional().default(() => new Date().toISOString()),
-    renewalDate: z.string().datetime(),
+    renewalDate: z.string().datetime().optional().nullable(),
     notes: z.string().max(300).optional().default('')
   })
 });
@@ -18,8 +23,10 @@ export const createPolicySchema = z.object({
 export const updatePolicySchema = z.object({
   body: z.object({
     providerName: z.string().min(1).max(100).optional(),
+    provider: z.string().optional(),
     premiumAmountPaise: z.number().int().min(1).optional(),
     sumInsuredPaise: z.number().int().min(0).optional(),
+    sumAssuredPaise: z.number().int().min(0).optional(),
     renewalDate: z.string().datetime().optional(),
     status: z.enum(['active', 'grace_period', 'lapsed', 'matured', 'surrendered']).optional(),
     notes: z.string().max(300).optional()
@@ -30,7 +37,7 @@ export async function getPolicies(req, res, next) {
   try {
     const policies = await InsurancePolicy.find({ userId: req.userId }).sort({ renewalDate: 1 });
 
-    const totalSumInsuredPaise = policies.reduce((acc, p) => p.status === 'active' ? acc + p.sumInsuredPaise : acc, 0);
+    const totalSumInsuredPaise = policies.reduce((acc, p) => p.status === 'active' ? acc + (p.sumInsuredPaise || 0) : acc, 0);
     const totalAnnualizedPremiumsPaise = policies.reduce((acc, p) => {
       if (p.status !== 'active') return acc;
       let multiplier = 1;
@@ -47,7 +54,13 @@ export async function getPolicies(req, res, next) {
     return res.status(200).json({
       success: true,
       data: {
-        policies,
+        policies: policies.map(p => ({
+          ...p.toObject(),
+          name: p.providerName,
+          type: p.policyType,
+          provider: p.providerName,
+          sumAssuredPaise: p.sumInsuredPaise
+        })),
         summary: {
           totalPolicies: policies.length,
           totalSumInsuredPaise,
@@ -63,15 +76,44 @@ export async function getPolicies(req, res, next) {
 
 export async function createPolicy(req, res, next) {
   try {
+    const providerName = req.body.name || req.body.providerName || req.body.provider || 'Insurance Provider';
+    let policyType = req.body.policyType || req.body.type || 'health';
+    if (!['term_life', 'health', 'motor_vehicle', 'home', 'travel', 'critical_illness', 'other'].includes(policyType)) {
+      policyType = 'health';
+    }
+    let premiumFrequency = req.body.premiumFrequency || 'yearly';
+    if (premiumFrequency === 'annual') premiumFrequency = 'yearly';
+
+    const sumInsuredPaise = req.body.sumInsuredPaise !== undefined ? req.body.sumInsuredPaise : (req.body.sumAssuredPaise || 0);
+    const policyNumberMasked = req.body.policyNumberMasked || req.body.policyNumber || '';
+    const renewalDate = req.body.renewalDate ? new Date(req.body.renewalDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const startDate = req.body.startDate ? new Date(req.body.startDate) : new Date();
+
     const policy = await InsurancePolicy.create({
-      ...req.body,
+      providerName,
+      policyType,
+      policyNumberMasked,
+      premiumAmountPaise: req.body.premiumAmountPaise,
+      premiumFrequency,
+      sumInsuredPaise,
+      startDate,
+      renewalDate,
+      notes: req.body.notes || '',
       userId: req.userId
     });
 
     return res.status(201).json({
       success: true,
       message: 'Insurance policy added successfully',
-      data: { policy }
+      data: {
+        policy: {
+          ...policy.toObject(),
+          name: policy.providerName,
+          type: policy.policyType,
+          provider: policy.providerName,
+          sumAssuredPaise: policy.sumInsuredPaise
+        }
+      }
     });
   } catch (err) {
     next(err);

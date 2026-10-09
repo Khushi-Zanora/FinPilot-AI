@@ -7,10 +7,11 @@ import { FREE_TIER_MAX_GOALS } from '../middleware/entitlement.js';
 export const createGoalSchema = z.object({
   body: z.object({
     name: z.string().min(1, 'Goal name is required').max(100),
-    purpose: z.enum(['emergency_fund', 'trip', 'gadget', 'education', 'home', 'vehicle', 'custom']).default('custom'),
+    purpose: z.enum(['emergency_fund', 'trip', 'gadget', 'education', 'home', 'vehicle', 'custom']).optional().default('emergency_fund'),
+    category: z.string().optional(),
     targetAmountPaise: z.number().int().min(1, 'Target amount must be at least 1 paisa'),
     currentAmountPaise: z.number().int().min(0).default(0),
-    targetDate: z.string().datetime(),
+    targetDate: z.string().optional().nullable().default(() => new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
     color: z.string().optional().default('#10b981'),
     icon: z.string().optional().default('target')
@@ -19,8 +20,9 @@ export const createGoalSchema = z.object({
 
 export const addGoalEntrySchema = z.object({
   body: z.object({
-    type: z.enum(['contribution', 'withdrawal']),
+    type: z.enum(['contribution', 'withdrawal']).optional().default('contribution'),
     amountPaise: z.number().int().min(1, 'Amount must be at least 1 paisa'),
+    accountId: z.string().optional().nullable(),
     note: z.string().max(200).optional().default(''),
     date: z.string().datetime().optional().default(() => new Date().toISOString())
   })

@@ -1,177 +1,314 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import WorkspaceHeader from '../components/WorkspaceHeader.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   ReceiptText,
   Search,
-  Filter,
   Plus,
   Download,
-  Upload,
-  FileSpreadsheet,
-  CheckCircle2,
-  SlidersHorizontal,
-  ChevronDown,
-  Building,
-  Target,
-  FileText,
-  Scissors,
   Repeat,
-  Paperclip,
-  Ban,
   ArrowDownLeft,
   ArrowUpRight,
-  Sparkles,
-  X
+  X,
+  Trash2,
+  AlertCircle,
+  Landmark,
+  Calendar,
+  Play,
+  Pause,
+  Clock,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 
 export default function TransactionsPage() {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'ledger';
+
+  const [activeMainTab, setActiveMainTab] = useState(initialTab); // 'ledger' | 'recurring'
   const [filterTab, setFilterTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTxId, setSelectedTxId] = useState('tx-1');
+  const [transactions, setTransactions] = useState([]);
+  const [recurrings, setRecurrings] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTxId, setSelectedTxId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAddRecurringModal, setShowAddRecurringModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [processingDue, setProcessingDue] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // New Transaction Form
+  // New Transaction Form state
   const [txForm, setTxForm] = useState({
-    entity: '',
-    category: 'Food & Dining',
-    account: 'HDFC Regalia (••4912)',
     type: 'expense',
-    amount: ''
+    amount: '',
+    accountId: '',
+    toAccountId: '',
+    category: 'Food & Dining',
+    description: '',
+    date: new Date().toISOString().slice(0, 16)
   });
 
-  const [transactions, setTransactions] = useState([
-    {
-      id: 'tx-1',
-      date: 'Oct 24, 2024 • 18:30:14 IST',
-      entity: 'Apple India Store BKC',
-      posRef: 'POS REF: APPL-MUM-994103 • C-C-AUTH',
-      category: 'Electronics & Tech',
-      account: 'HDFC Regalia (••4912)',
-      amount: -75000.00,
-      type: 'expense',
-      splitGoal: 'MacBook M3 Pro Tech Sinking Fund',
-      taxEligible: true,
-      location: 'Bandra Kurla Complex, Mumbai, MH',
-      gstin: '27AABCA1234F1Z9'
-    },
-    {
-      id: 'tx-2',
-      date: 'Oct 21, 2024 • 14:15:02 IST',
-      entity: 'Tech Corp Solutions India',
-      posRef: 'CMS/TECHCORP/SAL_OCT24/CMS49910',
-      category: 'Primary Income',
-      account: 'ICICI Salary (••8188)',
-      amount: 165000.00,
-      type: 'income'
-    },
-    {
-      id: 'tx-3',
-      date: 'Oct 18, 2024 • 11:20:49 IST',
-      entity: 'Tata AIA Life Insurance',
-      posRef: 'ACH DR / TATA-LIFE-ANNUAL-PRM / URN3981',
-      category: 'Insurance & Protection',
-      account: 'HDFC Salary (••4912)',
-      amount: -8260.00,
-      type: 'expense'
-    },
-    {
-      id: 'tx-4',
-      date: 'Oct 15, 2024 • 20:05:31 IST',
-      entity: 'Swiggy Gourmet Reserve',
-      posRef: 'UPI/SWIGGY/42881920/ORDER_MUMBAI',
-      category: 'Food & Dining',
-      account: 'HDFC Regalia (••4912)',
-      amount: -1240.00,
-      type: 'expense'
-    },
-    {
-      id: 'tx-5',
-      date: 'Oct 12, 2024 • 10:00:22 IST',
-      entity: 'Self Transfer: HDFC to Zerodha',
-      posRef: 'NEFT/ZERODHA-BROKING/HDFC00004912',
-      category: 'Internal Transfer',
-      account: 'HDFC Salary to Zerodha',
-      amount: -25000.00,
-      type: 'transfer'
-    },
-    {
-      id: 'tx-6',
-      date: 'Oct 10, 2024 • 19:48:11 IST',
-      entity: 'Shell Mobility Flagship',
-      posRef: 'POS/SHELL-BDR/AUTO-FUEL/TXN-88190',
-      category: 'Transport & Fuel',
-      account: 'HDFC Regalia (••4912)',
-      amount: -2890.00,
-      type: 'expense'
-    },
-    {
-      id: 'tx-7',
-      date: 'Oct 08, 2024 • 12:15:33 IST',
-      entity: 'Zerodha Broking AMC Payout',
-      posRef: 'ACH CR / DIVIDEND-ITC-Q2 / NSDL89100',
-      category: 'Dividend & Yield',
-      account: 'ICICI Direct Linked',
-      amount: 4120.00,
-      type: 'income'
-    },
-    {
-      id: 'tx-8',
-      date: 'Oct 04, 2024 • 09:30:19 IST',
-      entity: 'ACT Fibernet Broadband',
-      posRef: 'BBPS/BILLDESK/ACT-FIBER-MUMBAI-01',
-      category: 'Utilities & Telecom',
-      account: 'ICICI Bank (••8188)',
-      amount: -1179.00,
-      type: 'expense'
-    },
-    {
-      id: 'tx-9',
-      date: 'Oct 02, 2024 • 16:45:50 IST',
-      entity: 'ATM Cash Withdrawal (SBI ATM)',
-      posRef: 'NFS/SBI_ATM_ANDHERI_W/WDI_049811',
-      category: 'Cash Vault Withdrawal',
-      account: 'State Bank of India',
-      amount: -5000.00,
-      type: 'expense'
+  // New Recurring Form state
+  const [recurringForm, setRecurringForm] = useState({
+    type: 'income',
+    amount: '',
+    accountId: '',
+    category: 'Primary Salary',
+    description: '',
+    frequency: 'monthly',
+    startDate: new Date().toISOString().slice(0, 10),
+    nextDueDate: new Date().toISOString().slice(0, 10),
+    endDate: ''
+  });
+
+  useEffect(() => {
+    loadAllData();
+  }, [filterTab, activeMainTab]);
+
+  async function loadAllData() {
+    try {
+      setLoading(true);
+      setError('');
+
+      // 1. Fetch Accounts (optional manual tracking)
+      const accRes = await apiRequest('/accounts');
+      const userAccounts = accRes.success && accRes.data?.accounts ? accRes.data.accounts : [];
+      setAccounts(userAccounts);
+
+      // 2. Fetch Transactions
+      let url = '/transactions?limit=100';
+      if (filterTab === 'expenses') url += '&type=expense';
+      if (filterTab === 'inflows') url += '&type=income';
+      if (filterTab === 'transfers') url += '&type=transfer';
+
+      const txRes = await apiRequest(url);
+      if (txRes.success && txRes.data?.transactions) {
+        setTransactions(txRes.data.transactions);
+        if (txRes.data.transactions.length > 0 && !selectedTxId) {
+          setSelectedTxId(txRes.data.transactions[0]._id);
+        }
+      } else {
+        setTransactions([]);
+      }
+
+      // 3. Fetch Recurring Schedules
+      const recRes = await apiRequest('/transactions/recurring');
+      if (recRes.success && recRes.data?.recurrings) {
+        setRecurrings(recRes.data.recurrings);
+      } else {
+        setRecurrings([]);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load transaction data.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }
 
-  const selectedTx = transactions.find((t) => t.id === selectedTxId) || transactions[0];
-
-  const handleCreateTx = (e) => {
+  const handleCreateTx = async (e) => {
     e.preventDefault();
-    if (!txForm.entity || !txForm.amount) return;
+    if (!txForm.amount) return;
 
-    const amt = parseFloat(txForm.amount);
-    const newRecord = {
-      id: `tx-${Date.now()}`,
-      date: 'Just now',
-      entity: txForm.entity,
-      posRef: 'MANUAL ENTRY',
-      category: txForm.category,
-      account: txForm.account,
-      amount: txForm.type === 'income' ? amt : -amt,
-      type: txForm.type
-    };
+    setSubmitting(true);
+    setError('');
 
-    setTransactions([newRecord, ...transactions]);
-    setShowAddModal(false);
-    setTxForm({ entity: '', category: 'Food & Dining', account: 'HDFC Regalia (••4912)', type: 'expense', amount: '' });
+    try {
+      const amountPaise = Math.round(parseFloat(txForm.amount) * 100);
+      if (isNaN(amountPaise) || amountPaise <= 0) {
+        throw new Error('Please enter a valid amount greater than 0.');
+      }
+
+      const payload = {
+        type: txForm.type,
+        amountPaise,
+        accountId: txForm.accountId ? txForm.accountId : null,
+        category: txForm.category,
+        description: txForm.description,
+        date: txForm.date ? new Date(txForm.date).toISOString() : new Date().toISOString()
+      };
+
+      if (txForm.type === 'transfer') {
+        if (!txForm.accountId) {
+          throw new Error('Please select a source account for transfer.');
+        }
+        if (!txForm.toAccountId || txForm.toAccountId === txForm.accountId) {
+          throw new Error('Please select a destination account different from the source.');
+        }
+        payload.toAccountId = txForm.toAccountId;
+      }
+
+      const res = await apiRequest('/transactions', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (res.success) {
+        setShowAddModal(false);
+        setTxForm({
+          type: 'expense',
+          amount: '',
+          accountId: accounts[0]?._id || '',
+          toAccountId: '',
+          category: 'Food & Dining',
+          description: '',
+          date: new Date().toISOString().slice(0, 16)
+        });
+        setSuccessMsg('Transaction recorded successfully.');
+        setTimeout(() => setSuccessMsg(''), 4000);
+        await loadAllData();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to record transaction.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateRecurring = async (e) => {
+    e.preventDefault();
+    if (!recurringForm.amount) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const amountPaise = Math.round(parseFloat(recurringForm.amount) * 100);
+      if (isNaN(amountPaise) || amountPaise <= 0) {
+        throw new Error('Please enter a valid amount greater than 0.');
+      }
+
+      const payload = {
+        type: recurringForm.type,
+        amountPaise,
+        accountId: recurringForm.accountId ? recurringForm.accountId : null,
+        category: recurringForm.category,
+        description: recurringForm.description,
+        frequency: recurringForm.frequency,
+        startDate: recurringForm.startDate ? new Date(recurringForm.startDate).toISOString() : new Date().toISOString(),
+        nextDueDate: recurringForm.nextDueDate ? new Date(recurringForm.nextDueDate).toISOString() : new Date().toISOString(),
+        endDate: recurringForm.endDate ? new Date(recurringForm.endDate).toISOString() : null
+      };
+
+      const res = await apiRequest('/transactions/recurring', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (res.success) {
+        setShowAddRecurringModal(false);
+        setRecurringForm({
+          type: 'income',
+          amount: '',
+          accountId: accounts[0]?._id || '',
+          category: 'Primary Salary',
+          description: '',
+          frequency: 'monthly',
+          startDate: new Date().toISOString().slice(0, 10),
+          nextDueDate: new Date().toISOString().slice(0, 10),
+          endDate: ''
+        });
+        setSuccessMsg('Recurring schedule created successfully.');
+        setTimeout(() => setSuccessMsg(''), 4000);
+        await loadAllData();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create recurring schedule.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleRecurring = async (id) => {
+    try {
+      const res = await apiRequest(`/transactions/recurring/${id}/toggle`, { method: 'PATCH' });
+      if (res.success) {
+        setRecurrings((prev) => prev.map((r) => (r._id === id ? res.data.recurring : r)));
+      }
+    } catch (err) {
+      alert(`Error toggling schedule: ${err.message}`);
+    }
+  };
+
+  const handleDeleteRecurring = async (id) => {
+    if (!window.confirm('Delete this recurring schedule? Completed past transactions will not be deleted.')) return;
+    try {
+      await apiRequest(`/transactions/recurring/${id}`, { method: 'DELETE' });
+      setRecurrings((prev) => prev.filter((r) => r._id !== id));
+    } catch (err) {
+      alert(`Error deleting schedule: ${err.message}`);
+    }
+  };
+
+  const handleProcessDue = async () => {
+    setProcessingDue(true);
+    setError('');
+    try {
+      const res = await apiRequest('/transactions/recurring/process-due', { method: 'POST' });
+      if (res.success) {
+        setSuccessMsg(res.message || 'Due recurring transactions processed.');
+        setTimeout(() => setSuccessMsg(''), 4000);
+        await loadAllData();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to process due recurring transactions.');
+    } finally {
+      setProcessingDue(false);
+    }
+  };
+
+  const handleDeleteTx = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction record?')) return;
+    try {
+      await apiRequest(`/transactions/${id}`, { method: 'DELETE' });
+      setTransactions((prev) => prev.filter((t) => t._id !== id));
+      if (selectedTxId === id) {
+        setSelectedTxId(null);
+      }
+    } catch (err) {
+      alert(`Error: ${err.message || 'Failed to delete transaction'}`);
+    }
   };
 
   const filteredTxs = transactions.filter((t) => {
-    const matchesSearch = t.entity.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase());
-    if (filterTab === 'all') return matchesSearch;
-    if (filterTab === 'expenses') return matchesSearch && t.type === 'expense';
-    if (filterTab === 'inflows') return matchesSearch && t.type === 'income';
-    if (filterTab === 'transfers') return matchesSearch && t.type === 'transfer';
-    return matchesSearch;
+    const desc = (t.description || '').toLowerCase();
+    const cat = (t.category || '').toLowerCase();
+    const accName = (t.accountId?.name || '').toLowerCase();
+    const q = searchQuery.toLowerCase();
+    return desc.includes(q) || cat.includes(q) || accName.includes(q);
   });
 
+  const selectedTx = filteredTxs.find((t) => t._id === selectedTxId) || filteredTxs[0] || null;
+
+  // Real KPIs derived from actual records
+  const totalInflowsPaise = transactions
+    .filter((t) => t.type === 'income')
+    .reduce((acc, t) => acc + t.amountPaise, 0);
+
+  const totalOutflowsPaise = transactions
+    .filter((t) => t.type === 'expense')
+    .reduce((acc, t) => acc + t.amountPaise, 0);
+
+  const netCashFlowPaise = totalInflowsPaise - totalOutflowsPaise;
+
   const exportCSV = () => {
-    const headers = 'ID,Date,Entity,Category,Account,Amount,Type\n';
-    const rows = transactions.map((t) => `"${t.id}","${t.date}","${t.entity}","${t.category}","${t.account}",${t.amount},"${t.type}"`).join('\n');
+    if (transactions.length === 0) {
+      alert('No transactions to export.');
+      return;
+    }
+    const headers = 'ID,Date,Type,Category,Account,Amount (INR),Description\n';
+    const rows = transactions
+      .map((t) => {
+        const amt = (t.amountPaise / 100).toFixed(2);
+        const dt = t.date ? new Date(t.date).toLocaleDateString() : '';
+        const acc = t.accountId?.name || 'Unlinked';
+        return `"${t._id}","${dt}","${t.type}","${t.category}","${acc}",${t.type === 'expense' ? `-${amt}` : amt},"${(t.description || '').replace(/"/g, '""')}"`;
+      })
+      .join('\n');
+
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -190,383 +327,885 @@ export default function TransactionsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">LEDGER TELEMETRY</span>
+              <span className="text-[#05DF85] font-semibold">FINANCIAL LEDGER</span>
               <span className="text-slate-600">//</span>
-              <span>TRANSACTIONS & RECONCILIATION ENGINE</span>
+              <span>TRANSACTIONS & RECURRING SCHEDULES</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              Financial Transactions Ledger
+              Transactions & Recurring Income
             </h1>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={exportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#080D16] hover:bg-[#0D1422] text-slate-300 border border-white/[0.08] text-xs font-medium transition-all"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span>Export Ledger [CSV]</span>
-            </button>
+            {activeMainTab === 'recurring' ? (
+              <>
+                <button
+                  onClick={handleProcessDue}
+                  disabled={processingDue}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#080D16] hover:bg-[#0D1422] text-slate-300 border border-white/[0.08] text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
+                  title="Check and record transactions for due recurring schedules now"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${processingDue ? 'animate-spin' : ''}`} />
+                  <span>{processingDue ? 'Processing...' : 'Process Due Schedules'}</span>
+                </button>
 
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#080D16] hover:bg-[#0D1422] text-slate-300 border border-white/[0.08] text-xs font-medium transition-all"
-            >
-              <Upload className="w-3.5 h-3.5 text-slate-400" />
-              <span>Import CSV / Statement</span>
-            </button>
+                <button
+                  onClick={() => setShowAddRecurringModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Add Recurring Schedule</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={exportCSV}
+                  disabled={transactions.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#080D16] hover:bg-[#0D1422] text-slate-300 border border-white/[0.08] text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Export CSV</span>
+                </button>
 
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Add Transaction</span>
-            </button>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Record Transaction</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL VOLUME [OCT 2024]</div>
-            <div className="text-2xl font-mono font-bold text-white">₹2,59,680<span className="text-base text-slate-400 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>{transactions.length} Ledger records</span>
-              <span className="text-[#05DF85]">+14.2% vs Sep</span>
-            </div>
+        {/* Success Alert */}
+        {successMsg && (
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{successMsg}</span>
           </div>
+        )}
 
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">INFLOWS / CREDITS</div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">+₹1,85,000<span className="text-base text-emerald-300/60 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>Salary & Capital Yields</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] font-bold">2 Inflows</span>
-            </div>
+        {/* Error Alert */}
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
           </div>
+        )}
 
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-rose-400 mb-1">OUTFLOWS / DEBITS</div>
-            <div className="text-2xl font-mono font-bold text-white">-₹74,680<span className="text-base text-slate-400 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span className="text-rose-400">72% Burn</span>
-              <span className="text-slate-500">Cap ₹1,03,700</span>
-            </div>
-          </div>
+        {/* Top Tab Switcher: Ledger vs Recurring */}
+        <div className="flex items-center gap-2 p-1.5 rounded-xl bg-[#080D16] border border-white/[0.08] w-fit font-mono text-xs">
+          <button
+            onClick={() => setActiveMainTab('ledger')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-semibold cursor-pointer ${
+              activeMainTab === 'ledger'
+                ? 'bg-[#05DF85] text-slate-950 shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ReceiptText className="w-4 h-4" />
+            <span>Transaction Ledger ({transactions.length})</span>
+          </button>
 
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">AUTO-RECONCILED</div>
-            <div className="text-2xl font-mono font-bold text-white">99.2%</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span className="text-[#05DF85]">62 Verified</span>
-              <span className="text-slate-500">Paise Precision</span>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveMainTab('recurring')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-semibold cursor-pointer ${
+              activeMainTab === 'recurring'
+                ? 'bg-[#05DF85] text-slate-950 shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Repeat className="w-4 h-4" />
+            <span>Recurring Schedules ({recurrings.length})</span>
+          </button>
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl bg-[#080D16] border border-white/[0.08]">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search across transactions by description, merchant..."
-              className="w-full pl-9 pr-3 py-1.5 bg-[#0D1422] border border-white/[0.08] rounded-lg text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#05DF85]"
-            />
-          </div>
+        {/* TAB 1: LEDGER TRANSACTIONS */}
+        {activeMainTab === 'ledger' && (
+          <div className="space-y-6">
+            {/* Real KPI Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
+                <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL TRANSACTIONS</div>
+                <div className="text-2xl font-mono font-bold text-white">{transactions.length}</div>
+                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                  {transactions.length === 0 ? 'No activity recorded' : 'All tracked ledger records'}
+                </div>
+              </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-xs overflow-x-auto">
-            {[
-              { id: 'all', label: `All (${transactions.length})` },
-              { id: 'expenses', label: 'Expenses' },
-              { id: 'inflows', label: 'Inflows' },
-              { id: 'transfers', label: 'Transfers' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setFilterTab(tab.id)}
-                className={`px-3 py-1 rounded-md transition-all whitespace-nowrap ${
-                  filterTab === tab.id
-                    ? 'bg-[#05DF85] text-slate-950 font-bold'
-                    : 'text-slate-400 hover:text-white bg-[#0D1422]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+              <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
+                <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">MONEY RECEIVED (INCOME)</div>
+                <div className="text-2xl font-mono font-bold text-[#05DF85]">+{formatCurrency(totalInflowsPaise)}</div>
+                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                  Salary, investments & other income
+                </div>
+              </div>
 
-        {/* Main Grid: Transactions Table (8 cols) + Right Inspector Panels (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left: Transactions Table (8 cols) */}
-          <div className="lg:col-span-8 rounded-xl bg-[#080D16] border border-white/[0.08] overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 p-3.5 text-[10px] font-mono uppercase tracking-wider text-slate-500 border-b border-white/[0.06] bg-[#0D1422]/50">
-              <span className="col-span-5">DATE & MERCHANT</span>
-              <span className="col-span-4">CATEGORY / ACCOUNT</span>
-              <span className="col-span-3 text-right">AMOUNT (INR)</span>
+              <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
+                <div className="text-[11px] font-mono uppercase text-rose-400 mb-1">MONEY SPENT (EXPENSES)</div>
+                <div className="text-2xl font-mono font-bold text-white">-{formatCurrency(totalOutflowsPaise)}</div>
+                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                  Living expenses, bills & outlays
+                </div>
+              </div>
+
+              <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
+                <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">NET CASH FLOW</div>
+                <div className={`text-2xl font-mono font-bold ${netCashFlowPaise >= 0 ? 'text-white' : 'text-rose-400'}`}>
+                  {formatCurrency(netCashFlowPaise)}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                  Income minus recorded expenses
+                </div>
+              </div>
             </div>
 
-            {/* Table Rows */}
-            <div className="divide-y divide-white/[0.04]">
-              {filteredTxs.map((tx) => {
-                const isSelected = selectedTxId === tx.id;
-                const isIncome = tx.amount > 0;
-                return (
-                  <div
-                    key={tx.id}
-                    onClick={() => setSelectedTxId(tx.id)}
-                    className={`grid grid-cols-12 gap-2 p-3.5 items-center cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'bg-[#0D1422] border-l-2 border-l-[#05DF85]'
-                        : 'hover:bg-white/[0.02]'
+            {/* Filter Bar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl bg-[#080D16] border border-white/[0.08]">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by category, description, or account..."
+                  className="w-full pl-9 pr-3 py-1.5 bg-[#0D1422] border border-white/[0.08] rounded-lg text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 font-mono text-xs overflow-x-auto">
+                {[
+                  { id: 'all', label: `All (${transactions.length})` },
+                  { id: 'expenses', label: 'Expenses' },
+                  { id: 'inflows', label: 'Income' },
+                  { id: 'transfers', label: 'Transfers' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFilterTab(tab.id)}
+                    className={`px-3 py-1 rounded-md transition-all whitespace-nowrap cursor-pointer ${
+                      filterTab === tab.id
+                        ? 'bg-[#05DF85] text-slate-950 font-bold'
+                        : 'text-slate-400 hover:text-white bg-[#0D1422]'
                     }`}
                   >
-                    {/* Date & Merchant */}
-                    <div className="col-span-5 min-w-0 pr-2">
-                      <div className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
-                        <span>{tx.entity}</span>
-                        {tx.splitGoal && (
-                          <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/10 text-[#05DF85]">
-                            Linked
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">{tx.date}</div>
-                    </div>
-
-                    {/* Category / Account */}
-                    <div className="col-span-4 min-w-0">
-                      <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-slate-300 border border-white/[0.08] truncate max-w-full">
-                        {tx.category}
-                      </span>
-                      <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">{tx.account}</div>
-                    </div>
-
-                    {/* Amount */}
-                    <div className="col-span-3 text-right font-mono font-bold text-xs">
-                      <span className={isIncome ? 'text-[#05DF85]' : 'text-white'}>
-                        {isIncome ? `+₹${tx.amount.toLocaleString('en-IN')}.00` : `-₹${Math.abs(tx.amount).toLocaleString('en-IN')}.00`}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right: Statement Parser Studio & Record Inspector (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Statement Parser Studio Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-[#05DF85]" />
-                  <h3 className="text-xs font-bold text-white">Statement Parser Studio</h3>
-                </div>
-                <span className="text-[10px] font-mono text-[#05DF85] font-bold">READY</span>
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-
-              {/* Sample Uploaded File */}
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="font-mono text-[11px] text-white truncate">HDFC_Oct2024_Statement.csv</div>
-                    <div className="text-[10px] font-mono text-slate-500">348 KB • 48 valid rows parsed</div>
-                  </div>
-                </div>
-                <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
-              </div>
-
-              {/* Smart Auto-mapping Items */}
-              <div className="space-y-1 text-[11px] font-mono text-slate-400">
-                <div className="flex justify-between py-0.5">
-                  <span>Transaction Date:</span>
-                  <span className="text-white">Col A (DD/MM/YYYY)</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>Merchant / Narration:</span>
-                  <span className="text-white">Col B (Description)</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>Withdrawal / Debit:</span>
-                  <span className="text-white">Col D (INR - Outflow)</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>Deposit / Credit:</span>
-                  <span className="text-white">Col E (INR - Inflow)</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => alert('Statement reconciled! 48 entries processed.')}
-                className="w-full py-2.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.25)] flex items-center justify-center gap-1.5"
-              >
-                <span>Ingest & Reconcile Statement</span>
-                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
             </div>
 
-            {/* Record Inspector Card */}
-            {selectedTx && (
-              <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <ReceiptText className="w-3.5 h-3.5 text-[#05DF85]" />
-                    <span>Record Inspector</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-500">{selectedTx.id.toUpperCase()}</span>
+            {/* Main Content: Table & Inspector */}
+            {loading ? (
+              <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+                <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-xs font-mono text-slate-400">Loading ledger records...</p>
+              </div>
+            ) : filteredTxs.length === 0 ? (
+              <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-xl mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+                  <ReceiptText className="w-6 h-6" />
                 </div>
-
                 <div>
-                  <h4 className="text-sm font-bold text-white">{selectedTx.entity}</h4>
-                  <div className="text-2xl font-mono font-bold text-white mt-1">
-                    ₹{Math.abs(selectedTx.amount).toLocaleString('en-IN')}<span className="text-sm text-slate-400 font-normal">.00</span>
+                  <h3 className="text-base font-bold text-white">No Transactions Recorded Yet</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Record your daily spending or income directly. Adding accounts is optional.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setTxForm((prev) => ({ ...prev, type: 'income', category: 'Primary Salary' }));
+                      setShowAddModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)] cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Income</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTxForm((prev) => ({ ...prev, type: 'expense', category: 'Food & Dining' }));
+                      setShowAddModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 border border-white/[0.1] font-semibold text-xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Expense</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Transactions Table (8 cols) */}
+                <div className="lg:col-span-8 rounded-2xl bg-[#080D16] border border-white/[0.08] overflow-hidden flex flex-col justify-between">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-sans">
+                      <thead>
+                        <tr className="border-b border-white/[0.06] bg-[#0D1422]/50 text-slate-400 font-mono text-[11px] uppercase">
+                          <th className="p-3 pl-4">Transaction / Category</th>
+                          <th className="p-3">Account</th>
+                          <th className="p-3">Date</th>
+                          <th className="p-3 text-right">Amount</th>
+                          <th className="p-3 pr-4 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {filteredTxs.map((t) => {
+                          const isExpense = t.type === 'expense';
+                          const isIncome = t.type === 'income';
+                          const isTransfer = t.type === 'transfer';
+                          const isSelected = selectedTx && selectedTx._id === t._id;
+
+                          return (
+                            <tr
+                              key={t._id}
+                              onClick={() => setSelectedTxId(t._id)}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected ? 'bg-emerald-500/[0.07]' : 'hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <td className="p-3 pl-4">
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                      isIncome
+                                        ? 'bg-emerald-500/10 text-[#05DF85]'
+                                        : isTransfer
+                                        ? 'bg-cyan-500/10 text-cyan-400'
+                                        : 'bg-slate-800 text-slate-300'
+                                    }`}
+                                  >
+                                    {isIncome ? (
+                                      <ArrowDownLeft className="w-4 h-4" />
+                                    ) : isTransfer ? (
+                                      <Repeat className="w-4 h-4" />
+                                    ) : (
+                                      <ArrowUpRight className="w-4 h-4" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-white truncate max-w-[200px]">
+                                      {t.description || t.category}
+                                    </div>
+                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5">
+                                      <span>{t.category}</span>
+                                      {t.isRecurring && (
+                                        <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] text-[9px]">
+                                          Recurring
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="p-3 text-slate-300 font-mono text-[11px]">
+                                {t.accountId?.name || <span className="text-slate-500 italic">Unlinked</span>}
+                                {isTransfer && t.toAccountId && (
+                                  <span className="text-slate-500 block text-[10px]">
+                                    → {t.toAccountId.name}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                                {t.date
+                                  ? new Date(t.date).toLocaleDateString('en-IN', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })
+                                  : '—'}
+                              </td>
+
+                              <td className="p-3 text-right font-mono font-bold whitespace-nowrap">
+                                <span className={isIncome ? 'text-[#05DF85]' : 'text-white'}>
+                                  {isIncome ? '+' : isExpense ? '-' : ''}
+                                  {formatCurrency(t.amountPaise)}
+                                </span>
+                              </td>
+
+                              <td className="p-3 pr-4 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTx(t._id);
+                                  }}
+                                  className="p-1 rounded text-slate-500 hover:text-rose-400 transition-colors"
+                                  title="Delete transaction"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="text-[10px] font-mono text-slate-500 mt-1">{selectedTx.posRef}</div>
+
+                  <div className="p-3 border-t border-white/[0.04] bg-[#0D1422]/30 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+                    <span>Showing {filteredTxs.length} of {transactions.length} records</span>
+                    <span>Integer-paise arithmetic verified</span>
+                  </div>
                 </div>
 
-                {/* Goal Linkage Section */}
-                <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] space-y-1">
-                  <div className="text-[10px] font-mono uppercase text-slate-400 flex items-center gap-1">
-                    <Target className="w-3 h-3 text-[#05DF85]" />
-                    <span>GOAL LINKAGE</span>
-                  </div>
-                  <div className="text-xs font-bold text-white">MacBook M3 Pro Tech Sinking Fund</div>
-                  <div className="text-[10px] font-mono text-slate-400">Progress: ₹85,000 / ₹1,20,000 (71%)</div>
-                </div>
+                {/* Transaction Inspector / Details Drawer (4 cols) */}
+                <div className="lg:col-span-4 rounded-2xl bg-[#080D16] border border-white/[0.08] p-5 space-y-5">
+                  {selectedTx ? (
+                    <>
+                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+                        <div className="text-[11px] font-mono text-[#05DF85] font-bold">TRANSACTION INSPECTOR</div>
+                        <span className="text-[10px] font-mono text-slate-500">ID: {selectedTx._id.slice(-6)}</span>
+                      </div>
 
-                {/* Actions */}
-                <div className="grid grid-cols-2 gap-2 pt-1 font-sans text-xs">
-                  <button
-                    onClick={() => alert('Split modal opened')}
-                    className="p-2 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] flex items-center justify-center gap-1.5"
-                  >
-                    <Scissors className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Split Tx</span>
-                  </button>
-                  <button
-                    onClick={() => alert('Marked as recurring')}
-                    className="p-2 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] flex items-center justify-center gap-1.5"
-                  >
-                    <Repeat className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Make Recurring</span>
-                  </button>
-                  <button
-                    onClick={() => alert('Receipt attachment opened')}
-                    className="p-2 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] flex items-center justify-center gap-1.5"
-                  >
-                    <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Attach Receipt</span>
-                  </button>
-                  <button
-                    onClick={() => alert('Excluded from burn')}
-                    className="p-2 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] flex items-center justify-center gap-1.5"
-                  >
-                    <Ban className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Exclude Burn</span>
-                  </button>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-xl font-bold text-white">
+                            {selectedTx.description || selectedTx.category}
+                          </div>
+                          <div className="text-2xl font-mono font-bold mt-1 text-[#05DF85]">
+                            {selectedTx.type === 'income' ? '+' : selectedTx.type === 'expense' ? '-' : ''}
+                            {formatCurrency(selectedTx.amountPaise)}
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-2 text-xs font-mono">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Type</span>
+                            <span className="text-white uppercase font-bold">{selectedTx.type}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Category</span>
+                            <span className="text-slate-200">{selectedTx.category}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Account</span>
+                            <span className="text-slate-200">{selectedTx.accountId?.name || 'Unlinked Account'}</span>
+                          </div>
+                          {selectedTx.toAccountId && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Destination</span>
+                              <span className="text-slate-200">{selectedTx.toAccountId.name}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Timestamp</span>
+                            <span className="text-slate-300">
+                              {selectedTx.date ? new Date(selectedTx.date).toLocaleString('en-IN') : '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            onClick={() => handleDeleteTx(selectedTx._id)}
+                            className="w-full py-2 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Transaction</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-slate-500 text-xs font-mono">
+                      Select a transaction to inspect
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* TAB 2: RECURRING SCHEDULES (INCOME & EXPENSES) */}
+        {activeMainTab === 'recurring' && (
+          <div className="space-y-6">
+            {/* Informational Banner */}
+            <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs text-slate-300 space-y-1">
+              <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                <span>How Recurring Schedules Work</span>
+              </div>
+              <p className="leading-relaxed">
+                Recurring schedules represent future scheduled income (such as monthly salary, rent received, or pensions) and repeating bills.
+                Upcoming income is <strong>expected</strong> and is only recorded into your actual account balance when the scheduled due date arrives.
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+                <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-xs font-mono text-slate-400">Loading recurring schedules...</p>
+              </div>
+            ) : recurrings.length === 0 ? (
+              <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-xl mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+                  <Repeat className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">No Recurring Schedules Set Up</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Set up your monthly salary, freelancing retainer, rental income, or repeating utility bills to have them automatically recorded when due.
+                  </p>
+                </div>
+                <div>
+                  <button
+                    onClick={() => setShowAddRecurringModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)] cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Recurring Schedule</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {recurrings.map((rule) => {
+                  const isIncome = rule.type === 'income';
+                  const nextDue = new Date(rule.nextDueDate);
+
+                  return (
+                    <div
+                      key={rule._id}
+                      className={`p-5 rounded-2xl border transition-all space-y-4 ${
+                        rule.isActive
+                          ? 'bg-[#080D16] border-white/[0.08] hover:border-white/[0.2]'
+                          : 'bg-[#080D16]/50 border-white/[0.04] opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
+                              isIncome
+                                ? 'bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}
+                          >
+                            {isIncome ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <div className="font-bold text-white text-sm">
+                              {rule.description || (isIncome ? 'Recurring Income' : 'Recurring Expense')}
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              {rule.category} • <span className="capitalize">{rule.frequency}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                            rule.isActive
+                              ? 'bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20'
+                              : 'bg-slate-700 text-slate-400'
+                          }`}
+                        >
+                          {rule.isActive ? 'Active' : 'Paused'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 p-3 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs font-mono">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-slate-400 text-[11px]">Amount</span>
+                          <span className={`font-bold text-sm ${isIncome ? 'text-[#05DF85]' : 'text-white'}`}>
+                            {isIncome ? '+' : '-'}{formatCurrency(rule.amountPaise)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Account</span>
+                          <span className="text-slate-300">{rule.accountId?.name || 'Unlinked'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Next Due Date</span>
+                          <span className="text-white font-semibold">{nextDue.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                        {rule.lastGeneratedDate && (
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-slate-500">Last Recorded</span>
+                            <span className="text-slate-400">{new Date(rule.lastGeneratedDate).toLocaleDateString('en-IN')}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                        <button
+                          onClick={() => handleToggleRecurring(rule._id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            rule.isActive
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20'
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-[#05DF85] border border-emerald-500/20'
+                          }`}
+                        >
+                          {rule.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                          <span>{rule.isActive ? 'Pause' : 'Resume'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteRecurring(rule._id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Delete schedule"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Add Transaction Modal */}
+      {/* MODAL 1: Record Transaction */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#080D16] border border-white/[0.1] rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-lg rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#05DF85]" />
-                <span>Record New Entry</span>
+                <ReceiptText className="w-4 h-4 text-[#05DF85]" />
+                <span>Record New Transaction</span>
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTx} className="space-y-3 font-sans text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">TYPE</label>
-                <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleCreateTx} className="space-y-4 text-xs font-sans">
+              <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+                {[
+                  { id: 'expense', label: 'Expense (-)' },
+                  { id: 'income', label: 'Income (+)' },
+                  { id: 'transfer', label: 'Transfer (⇄)' }
+                ].map((t) => (
                   <button
+                    key={t.id}
                     type="button"
-                    onClick={() => setTxForm({ ...txForm, type: 'expense' })}
-                    className={`py-2 rounded-lg font-bold transition-all ${txForm.type === 'expense' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-[#0D1422] text-slate-400 border border-white/[0.08]'}`}
+                    onClick={() => setTxForm({ ...txForm, type: t.id })}
+                    className={`py-2 rounded-lg font-bold border transition-all cursor-pointer ${
+                      txForm.type === t.id
+                        ? 'bg-[#05DF85] text-slate-950 border-[#05DF85]'
+                        : 'bg-[#0D1422] text-slate-300 border-white/[0.08] hover:border-white/[0.2]'
+                    }`}
                   >
-                    Expense (-)
+                    {t.label}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setTxForm({ ...txForm, type: 'income' })}
-                    className={`py-2 rounded-lg font-bold transition-all ${txForm.type === 'income' ? 'bg-emerald-500/20 text-[#05DF85] border border-emerald-500/40' : 'bg-[#0D1422] text-slate-400 border border-white/[0.08]'}`}
-                  >
-                    Income (+)
-                  </button>
-                </div>
+                ))}
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">MERCHANT / ENTITY</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Swiggy Gourmet"
-                  value={txForm.entity}
-                  onChange={(e) => setTxForm({ ...txForm, entity: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">AMOUNT (₹ INR)</label>
+                <label className="block text-slate-300 font-medium mb-1">
+                  Amount (₹ INR) <span className="text-[#05DF85]">*</span>
+                </label>
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   required
-                  placeholder="e.g. 1240"
+                  placeholder="e.g. 1500.00"
                   value={txForm.amount}
                   onChange={(e) => setTxForm({ ...txForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-sm focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {txForm.type === 'transfer' ? 'Source Account' : 'Account (Optional)'}{' '}
+                    {txForm.type === 'transfer' && <span className="text-[#05DF85]">*</span>}
+                  </label>
+                  <select
+                    value={txForm.accountId}
+                    onChange={(e) => setTxForm({ ...txForm, accountId: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                  >
+                    {txForm.type !== 'transfer' && (
+                      <option value="">No specific account (Unlinked)</option>
+                    )}
+                    {accounts.map((acc) => (
+                      <option key={acc._id} value={acc._id}>
+                        {acc.name} ({acc.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {txForm.type === 'transfer' ? (
+                  <div>
+                    <label className="block text-slate-300 font-medium mb-1">
+                      Destination Account <span className="text-[#05DF85]">*</span>
+                    </label>
+                    <select
+                      value={txForm.toAccountId}
+                      onChange={(e) => setTxForm({ ...txForm, toAccountId: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                    >
+                      <option value="">Select Destination...</option>
+                      {accounts
+                        .filter((acc) => acc._id !== txForm.accountId)
+                        .map((acc) => (
+                          <option key={acc._id} value={acc._id}>
+                            {acc.name} ({acc.type})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-slate-300 font-medium mb-1">Category</label>
+                    <select
+                      value={txForm.category}
+                      onChange={(e) => setTxForm({ ...txForm, category: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                    >
+                      {txForm.type === 'income' ? (
+                        <>
+                          <option value="Primary Salary">Primary Salary</option>
+                          <option value="Consulting & Freelance">Consulting & Freelance</option>
+                          <option value="Dividend & Yield">Dividend & Yield</option>
+                          <option value="Rental Income">Rental Income</option>
+                          <option value="Other Income">Other Income</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="Food & Dining">Food & Dining</option>
+                          <option value="Housing & Rent">Housing & Rent</option>
+                          <option value="Transport & Fuel">Transport & Fuel</option>
+                          <option value="Utilities & Subscriptions">Utilities & Subscriptions</option>
+                          <option value="Shopping & Tech">Shopping & Tech</option>
+                          <option value="Healthcare">Healthcare</option>
+                          <option value="Education">Education</option>
+                          <option value="Entertainment">Entertainment</option>
+                          <option value="General Expense">General Expense</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Description / Merchant</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Swiggy, DMart, Rent payment, Client invoice"
+                  value={txForm.description}
+                  onChange={(e) => setTxForm({ ...txForm, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">CATEGORY</label>
-                <select
-                  value={txForm.category}
-                  onChange={(e) => setTxForm({ ...txForm, category: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
-                >
-                  <option value="Food & Dining">Food & Dining</option>
-                  <option value="Housing & Rent">Housing & Rent</option>
-                  <option value="Transport & Fuel">Transport & Fuel</option>
-                  <option value="Utilities & Subscriptions">Utilities & Subscriptions</option>
-                  <option value="Electronics & Tech">Electronics & Tech</option>
-                  <option value="Primary Income">Primary Income</option>
-                </select>
+                <label className="block text-slate-300 font-medium mb-1">Date & Time</label>
+                <input
+                  type="datetime-local"
+                  value={txForm.date}
+                  onChange={(e) => setTxForm({ ...txForm, date: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  Save Entry
+                  {submitting ? 'Recording...' : 'Save Transaction'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Create Recurring Schedule */}
+      {showAddRecurringModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-lg rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-[#05DF85]" />
+                <span>Create Recurring Schedule</span>
+              </h3>
+              <button onClick={() => setShowAddRecurringModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRecurring} className="space-y-4 text-xs font-sans">
+              <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRecurringForm({ ...recurringForm, type: 'income', category: 'Primary Salary' })}
+                  className={`py-2 rounded-lg font-bold border transition-all cursor-pointer ${
+                    recurringForm.type === 'income'
+                      ? 'bg-[#05DF85] text-slate-950 border-[#05DF85]'
+                      : 'bg-[#0D1422] text-slate-300 border-white/[0.08]'
+                  }`}
+                >
+                  Recurring Income (+)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecurringForm({ ...recurringForm, type: 'expense', category: 'Housing & Rent' })}
+                  className={`py-2 rounded-lg font-bold border transition-all cursor-pointer ${
+                    recurringForm.type === 'expense'
+                      ? 'bg-rose-500 text-white border-rose-500'
+                      : 'bg-[#0D1422] text-slate-300 border-white/[0.08]'
+                  }`}
+                >
+                  Recurring Expense / Bill (-)
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  Amount per occurrence (₹ INR) <span className="text-[#05DF85]">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="e.g. 75000.00"
+                  value={recurringForm.amount}
+                  onChange={(e) => setRecurringForm({ ...recurringForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-sm focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {recurringForm.type === 'income' ? 'Deposit Account (Optional)' : 'Debit Account (Optional)'}
+                  </label>
+                  <select
+                    value={recurringForm.accountId}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, accountId: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                  >
+                    <option value="">No specific account (Unlinked)</option>
+                    {accounts.map((acc) => (
+                      <option key={acc._id} value={acc._id}>
+                        {acc.name} ({acc.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Frequency</label>
+                  <select
+                    value={recurringForm.frequency}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, frequency: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                  >
+                    <option value="monthly">Monthly (Recommended)</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly (Every 2 weeks)</option>
+                    <option value="quarterly">Quarterly (Every 3 months)</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Source / Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Monthly Employer Salary, Rent Received"
+                    value={recurringForm.description}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Category</label>
+                  <select
+                    value={recurringForm.category}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                  >
+                    {recurringForm.type === 'income' ? (
+                      <>
+                        <option value="Primary Salary">Primary Salary</option>
+                        <option value="Rental Income">Rental Income</option>
+                        <option value="Consulting & Freelance">Consulting & Freelance</option>
+                        <option value="Pension & Annuity">Pension & Annuity</option>
+                        <option value="Dividend & Yield">Dividend & Yield</option>
+                        <option value="Other Recurring Income">Other Recurring Income</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Housing & Rent">Housing & Rent</option>
+                        <option value="Utilities & Subscriptions">Utilities & Subscriptions</option>
+                        <option value="Insurance Premium">Insurance Premium</option>
+                        <option value="Loan EMI">Loan EMI</option>
+                        <option value="General Bill">General Bill</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    Next Due Date <span className="text-[#05DF85]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={recurringForm.nextDueDate}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, nextDueDate: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">End Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={recurringForm.endDate}
+                    onChange={(e) => setRecurringForm({ ...recurringForm, endDate: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddRecurringModal(false)}
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? 'Saving Schedule...' : 'Save Schedule'}
                 </button>
               </div>
             </form>

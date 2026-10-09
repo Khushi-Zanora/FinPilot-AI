@@ -123,19 +123,21 @@ export async function getDashboardSummary(req, res, next) {
     // 5. Upcoming 30-Day Obligations (Loans EMI, Recurring Bills, Insurance Premiums)
     const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const [activeLoans, upcomingRecurrings, upcomingInsurance] = await Promise.all([
+    const [activeLoans, upcomingRecurringBills, upcomingRecurringIncome, upcomingInsurance] = await Promise.all([
       Loan.find({ userId, status: 'active' }),
-      RecurringTransaction.find({ userId, isActive: true, nextDueDate: { $gte: now, $lte: in30Days } }),
+      RecurringTransaction.find({ userId, isActive: true, type: 'expense', nextDueDate: { $gte: now, $lte: in30Days } }),
+      RecurringTransaction.find({ userId, isActive: true, type: 'income', nextDueDate: { $gte: now, $lte: in30Days } }),
       InsurancePolicy.find({ userId, status: 'active', renewalDate: { $gte: now, $lte: in30Days } })
     ]);
 
     const upcomingLoanEmiPaise = activeLoans.reduce((acc, l) => acc + l.emiPaise, 0);
-    const upcomingRecurringPaise = upcomingRecurrings.reduce((acc, r) => acc + r.amountPaise, 0);
+    const upcomingRecurringBillsPaise = upcomingRecurringBills.reduce((acc, r) => acc + r.amountPaise, 0);
+    const upcomingRecurringIncomePaise = upcomingRecurringIncome.reduce((acc, r) => acc + r.amountPaise, 0);
     const upcomingInsurancePaise = upcomingInsurance.reduce((acc, i) => acc + i.premiumAmountPaise, 0);
 
-    const totalUpcoming30DayObligationsPaise = upcomingLoanEmiPaise + upcomingRecurringPaise + upcomingInsurancePaise;
+    const totalUpcoming30DayObligationsPaise = upcomingLoanEmiPaise + upcomingRecurringBillsPaise + upcomingInsurancePaise;
 
-    // 6. Available Uncommitted Cash
+    // 6. Available Uncommitted Cash (tracked cash minus goal reserves minus upcoming bills/liabilities)
     const availableCashPaise = calculateAvailableCash({
       totalTrackedCashPaise,
       activeGoalsEarmarkedPaise: totalGoalEarmarksPaise,
@@ -159,8 +161,9 @@ export async function getDashboardSummary(req, res, next) {
           totalPaise: totalUpcoming30DayObligationsPaise,
           breakdown: {
             loanEmiPaise: upcomingLoanEmiPaise,
-            recurringBillsPaise: upcomingRecurringPaise,
-            insurancePremiumsPaise: upcomingInsurancePaise
+            recurringBillsPaise: upcomingRecurringBillsPaise,
+            insurancePremiumsPaise: upcomingInsurancePaise,
+            upcomingIncomePaise: upcomingRecurringIncomePaise
           }
         },
         currentMonth: {
@@ -184,7 +187,7 @@ export async function getDashboardSummary(req, res, next) {
 
 export async function getCashflowTimeseries(req, res, next) {
   try {
-    const userId = req.user._id;
+    const userObjId = req.user?._id || req.userId;
     const monthsCount = Math.min(12, Math.max(3, parseInt(req.query.months || '6', 10)));
 
     const now = new Date();
@@ -194,13 +197,13 @@ export async function getCashflowTimeseries(req, res, next) {
       const year = now.getFullYear();
       const monthIndex = now.getMonth() - i;
       
-      const start = new Date(year, monthIndex, 1);
+      const start = new Date(year, monthIndex, 1, 0, 0, 0, 0);
       const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
 
       const agg = await Transaction.aggregate([
         {
           $match: {
-            userId,
+            userId: userObjId,
             date: { $gte: start, $lte: end },
             type: { $in: ['income', 'expense'] }
           }
@@ -231,10 +234,19 @@ export async function getCashflowTimeseries(req, res, next) {
       });
     }
 
+    // Filter out leading empty months before user had any transactions
+    const hasAnyActivity = resultSeries.some(m => m.incomePaise > 0 || m.expensePaise > 0);
+    const finalSeries = hasAnyActivity
+      ? resultSeries.filter((m, idx) => {
+          const firstNonZero = resultSeries.findIndex(x => x.incomePaise > 0 || x.expensePaise > 0);
+          return idx >= firstNonZero;
+        })
+      : [resultSeries[resultSeries.length - 1]];
+
     return res.status(200).json({
       success: true,
       data: {
-        timeseries: resultSeries
+        timeseries: finalSeries
       }
     });
   } catch (err) {
@@ -244,17 +256,17 @@ export async function getCashflowTimeseries(req, res, next) {
 
 export async function getCategoryBreakdown(req, res, next) {
   try {
-    const userId = req.user._id;
+    const userObjId = req.user?._id || req.userId;
     const type = req.query.type === 'income' ? 'income' : 'expense';
 
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const agg = await Transaction.aggregate([
       {
         $match: {
-          userId,
+          userId: userObjId,
           type,
           date: { $gte: startOfMonth, $lte: endOfMonth }
         }
@@ -272,9 +284,11 @@ export async function getCategoryBreakdown(req, res, next) {
     const grandTotalPaise = agg.reduce((acc, c) => acc + c.totalPaise, 0);
 
     const categories = agg.map((c) => ({
-      category: c._id,
+      name: c._id || 'Uncategorized',
+      category: c._id || 'Uncategorized',
       totalPaise: c.totalPaise,
       count: c.count,
+      percent: grandTotalPaise > 0 ? Number(((c.totalPaise / grandTotalPaise) * 100).toFixed(1)) : 0,
       percentage: grandTotalPaise > 0 ? Number(((c.totalPaise / grandTotalPaise) * 100).toFixed(1)) : 0
     }));
 

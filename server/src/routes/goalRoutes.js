@@ -17,6 +17,7 @@ router.use(authenticate, requireAuth);
 router.get('/', getGoals);
 router.post('/', validate(createGoalSchema), createGoal);
 router.post('/:id/entries', validate(addGoalEntrySchema), addGoalEntry);
+router.post('/:id/contribute', validate(addGoalEntrySchema), addGoalEntry);
 router.delete('/:id', deleteGoal);
 
 export default router;

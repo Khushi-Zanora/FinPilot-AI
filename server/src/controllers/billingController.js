@@ -10,7 +10,7 @@ import { User } from '../models/User.js';
 
 export const createOrderSchema = z.object({
   body: z.object({
-    planId: z.enum(['premium_monthly', 'premium_yearly'])
+    planId: z.string().min(1, 'planId is required')
   })
 });
 
@@ -19,7 +19,7 @@ export const verifyPaymentSchema = z.object({
     razorpayOrderId: z.string().min(1),
     razorpayPaymentId: z.string().optional().default(''),
     razorpaySignature: z.string().optional().default(''),
-    planId: z.enum(['premium_monthly', 'premium_yearly'])
+    planId: z.string().optional().default('premium_monthly')
   })
 });
 
@@ -75,10 +75,15 @@ export async function verifyPayment(req, res, next) {
       planId
     });
 
+    const updatedUser = await User.findById(req.userId).select('-passwordHash');
+
     return res.status(200).json({
       success: true,
       message: 'Subscription activated successfully! Welcome to FinPilot Premium.',
-      data: result
+      data: {
+        ...result,
+        user: updatedUser ? updatedUser.toSafeObject() : { plan: 'premium' }
+      }
     });
   } catch (err) {
     next(err);

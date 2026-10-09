@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Budget } from '../models/Budget.js';
 import { Transaction } from '../models/Transaction.js';
@@ -7,17 +8,22 @@ import { FREE_TIER_MAX_BUDGETS } from '../middleware/entitlement.js';
 export const createBudgetSchema = z.object({
   body: z.object({
     category: z.string().min(1, 'Category is required'),
-    amountPaise: z.number().int().min(1, 'Budget amount must be at least 1 paisa'),
+    amountPaise: z.number().int().min(1, 'Budget amount must be at least 1 paisa').optional(),
+    monthlyCapPaise: z.number().int().min(1, 'Budget amount must be at least 1 paisa').optional(),
     period: z.enum(['monthly', 'weekly', 'yearly']).default('monthly'),
     month: z.number().int().min(1).max(12).optional(),
     year: z.number().int().min(2020).max(2050).optional(),
     alertThresholdPercent: z.number().min(1).max(100).default(80)
+  }).refine((data) => data.amountPaise || data.monthlyCapPaise, {
+    message: 'Budget amount (amountPaise or monthlyCapPaise) is required',
+    path: ['amountPaise']
   })
 });
 
 export const updateBudgetSchema = z.object({
   body: z.object({
     amountPaise: z.number().int().min(1).optional(),
+    monthlyCapPaise: z.number().int().min(1).optional(),
     alertThresholdPercent: z.number().min(1).max(100).optional()
   })
 });
@@ -33,11 +39,13 @@ export async function getBudgets(req, res, next) {
 
     const budgets = await Budget.find({ userId: req.userId });
 
+    const userObjId = mongoose.Types.ObjectId.isValid(req.userId) ? new mongoose.Types.ObjectId(req.userId) : req.userId;
+
     // Aggregate expenses by category for the current month
     const expensesByCategory = await Transaction.aggregate([
       {
         $match: {
-          userId: req.user._id,
+          userId: userObjId,
           type: 'expense',
           date: { $gte: startOfMonth, $lte: endOfMonth }
         }
@@ -52,11 +60,14 @@ export async function getBudgets(req, res, next) {
 
     const spentMap = new Map();
     expensesByCategory.forEach((item) => {
-      spentMap.set(item._id.toLowerCase(), item.totalSpentPaise);
+      if (item._id) {
+        spentMap.set(item._id.toString().toLowerCase().trim(), item.totalSpentPaise);
+      }
     });
 
     const budgetsWithStatus = budgets.map((b) => {
-      const spentPaise = spentMap.get(b.category.toLowerCase()) || 0;
+      const catKey = (b.category || '').toString().toLowerCase().trim();
+      const spentPaise = spentMap.get(catKey) || 0;
       const statusObj = calculateBudgetStatus({
         budgetedPaise: b.amountPaise,
         spentPaise
@@ -64,8 +75,11 @@ export async function getBudgets(req, res, next) {
 
       return {
         ...b.toObject(),
+        amountPaise: b.amountPaise,
+        monthlyCapPaise: b.amountPaise,
         spentPaise: statusObj.spentPaise,
         remainingPaise: statusObj.remainingPaise,
+        percent: statusObj.consumedPercentage,
         consumedPercentage: statusObj.consumedPercentage,
         status: statusObj.status
       };
@@ -101,9 +115,11 @@ export async function createBudget(req, res, next) {
       }
     }
 
+    const amountPaise = req.body.amountPaise || req.body.monthlyCapPaise;
     const now = new Date();
     const budget = await Budget.create({
       ...req.body,
+      amountPaise,
       month: req.body.month || now.getMonth() + 1,
       year: req.body.year || now.getFullYear(),
       userId: req.userId
@@ -112,7 +128,12 @@ export async function createBudget(req, res, next) {
     return res.status(201).json({
       success: true,
       message: 'Budget created successfully',
-      data: { budget }
+      data: { 
+        budget: {
+          ...budget.toObject(),
+          monthlyCapPaise: budget.amountPaise
+        }
+      }
     });
   } catch (err) {
     next(err);

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import WorkspaceHeader from '../components/WorkspaceHeader.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   ShieldCheck,
   Shield,
@@ -7,478 +8,396 @@ import {
   Car,
   Sparkles,
   Plus,
-  Download,
   Calendar,
-  Phone,
-  FileText,
-  UserCheck,
-  CheckCircle2,
-  AlertTriangle,
+  Trash2,
   X
 } from 'lucide-react';
 
 export default function InsurancePage() {
-  const [filter, setFilter] = useState('all');
+  const [policies, setPolicies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const policies = [
-    {
-      id: 'pol-1',
-      name: 'Tata AIA Sampoorna Raksha Supreme',
-      policyNumber: 'Policy # 0798438251',
-      category: 'life',
-      typeBadge: 'PURE TERM',
-      typeStyle: 'bg-emerald-500/10 text-[#05DF85] border-emerald-500/20',
-      sumAssured: 30000000,
-      premium: 28500,
-      dueDate: '28 Nov 2024',
-      coverageTerm: 'Covered Till Age 65 (2054)',
-      tags: ['Level Cover Shield', 'Terminal Illness Included', 'Sec 80C Compliant', 'Auto-Debit: Sinking Fund']
-    },
-    {
-      id: 'pol-2',
-      name: 'Tech Corp India Group Term Life (GTL)',
-      policyNumber: 'Policy # GT-CORP-8841',
-      category: 'life',
-      typeBadge: 'EMPLOYER SPONSORED',
-      typeStyle: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-      sumAssured: 5000000,
-      premium: 0,
-      dueDate: 'Auto Renewed',
-      coverageTerm: 'Continuous Active Employment',
-      tags: ['Employment Dependent', 'HR Portability Available']
-    },
-    {
-      id: 'pol-3',
-      name: 'HDFC ERGO Optima Secure',
-      policyNumber: 'Policy # 2810/0061837/00',
-      category: 'health',
-      typeBadge: 'BASE MEDICLAIM',
-      typeStyle: 'bg-emerald-500/10 text-[#05DF85] border-emerald-500/20',
-      sumAssured: 1000000,
-      premium: 22100,
-      dueDate: '14 May 2025',
-      coverageTerm: 'Zone 1 Tier • 0% Co-Payment',
-      tags: ['Cashless TPA: HDFC In-house', 'Restoration Benefit 100%', 'Sec 80D: Self & Spouse']
-    },
-    {
-      id: 'pol-4',
-      name: 'Care Health Enhance Super Top-Up',
-      policyNumber: 'Policy # CH-SUP-994102',
-      category: 'health',
-      typeBadge: 'CATASTROPHIC SHIELD',
-      typeStyle: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-      sumAssured: 9000000,
-      premium: 17800,
-      dueDate: '14 May 2025',
-      coverageTerm: 'Deductible: ₹10,00,000 (Matched to Base)',
-      tags: ['Seamless Super Top-up Bridge', 'Worldwide Emergency Included', 'Zero Co-Pay']
-    },
-    {
-      id: 'pol-5',
-      name: 'Tata AIG Comprehensive EV Auto',
-      policyNumber: 'Vehicle: Tata Nexon EV Max (MH-02-FE-4921)',
-      category: 'asset',
-      typeBadge: 'ASSET PROTECTION',
-      typeStyle: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      sumAssured: 1540000,
-      premium: 14200,
-      dueDate: '10 Jul 2025',
-      coverageTerm: 'Zero Depreciation + Battery Lock',
-      tags: ['Engine & High-Voltage Battery Shield', '24x7 Roadside Assist']
+  const [polForm, setPolForm] = useState({
+    name: '',
+    policyNumber: '',
+    provider: '',
+    type: 'health',
+    sumAssured: '',
+    premiumAmount: '',
+    premiumFrequency: 'annual',
+    renewalDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  });
+
+  useEffect(() => {
+    loadPolicies();
+  }, []);
+
+  async function loadPolicies() {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await apiRequest('/insurance');
+      if (res.success && res.data?.policies) {
+        setPolicies(res.data.policies);
+      } else {
+        setPolicies([]);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load insurance policies.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  }
 
-  const [newPol, setNewPol] = useState({ name: '', category: 'life', sumAssured: '', premium: '', dueDate: '' });
-
-  const handleAddPolicy = (e) => {
+  const handleCreatePolicy = async (e) => {
     e.preventDefault();
-    if (!newPol.name || !newPol.sumAssured) return;
-    const polObj = {
-      id: `pol-${Date.now()}`,
-      name: newPol.name,
-      policyNumber: `Policy # FP-${Date.now().toString().slice(-6)}`,
-      category: newPol.category,
-      typeBadge: newPol.category.toUpperCase(),
-      typeStyle: 'bg-emerald-500/10 text-[#05DF85] border-emerald-500/20',
-      sumAssured: parseFloat(newPol.sumAssured),
-      premium: parseFloat(newPol.premium) || 0,
-      dueDate: newPol.dueDate || 'Annual',
-      coverageTerm: 'Active Policy',
-      tags: ['User Endorsed']
-    };
-    policies.push(polObj);
-    setShowAddModal(false);
-    setNewPol({ name: '', category: 'life', sumAssured: '', premium: '', dueDate: '' });
+    if (!polForm.name || !polForm.sumAssured) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const sumAssuredPaise = Math.round(parseFloat(polForm.sumAssured) * 100);
+      const premiumAmountPaise = Math.round(parseFloat(polForm.premiumAmount || '0') * 100);
+
+      const res = await apiRequest('/insurance', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: polForm.name.trim(),
+          policyNumber: polForm.policyNumber.trim() || `POL-${Date.now().toString().slice(-6)}`,
+          provider: polForm.provider.trim() || 'Insurance Provider',
+          type: polForm.type,
+          sumAssuredPaise,
+          premiumAmountPaise,
+          premiumFrequency: polForm.premiumFrequency,
+          renewalDate: polForm.renewalDate ? new Date(polForm.renewalDate).toISOString() : null
+        })
+      });
+
+      if (res.success) {
+        setShowAddModal(false);
+        setPolForm({
+          name: '',
+          policyNumber: '',
+          provider: '',
+          type: 'health',
+          sumAssured: '',
+          premiumAmount: '',
+          premiumFrequency: 'annual',
+          renewalDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        });
+        await loadPolicies();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to add insurance policy.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePolicy = async (id, name) => {
+    if (!window.confirm(`Delete policy "${name}"?`)) return;
+    try {
+      await apiRequest(`/insurance/${id}`, { method: 'DELETE' });
+      await loadPolicies();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
   };
 
   const filteredPolicies = policies.filter((p) => {
-    if (filter === 'all') return true;
-    return p.category === filter;
+    if (activeTab === 'all') return true;
+    return p.type === activeTab;
   });
 
-  const downloadEmergencyKit = () => {
-    const kitText = `FINPILOT EMERGENCY INSURANCE DISPATCH KIT\nPrimary Nominee: Priya Sharma (Spouse)\nEmergency Helpline: 1800-266-1400\nLife Cover: ₹3.50 Cr\nHealth Shield: ₹1.00 Cr\nPolicy Documents Vault: 4/4 Verified on eIA/CKYC`;
-    const blob = new Blob([kitText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `FinPilot_Emergency_Dispatch_Kit_${Date.now()}.txt`;
-    a.click();
-  };
+  const totalSumAssuredPaise = policies.reduce((acc, p) => acc + (p.sumAssuredPaise || 0), 0);
+  const totalAnnualPremiumPaise = policies.reduce((acc, p) => acc + (p.premiumAmountPaise || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col bg-[#05080E] text-slate-100 font-sans min-h-screen">
       <WorkspaceHeader onRecordTransaction={() => {}} />
 
       <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-        {/* Header */}
+        {/* Title Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">HEALTH & PROTECTION</span>
+              <span className="text-[#05DF85] font-semibold">RISK MITIGATION</span>
               <span className="text-slate-600">//</span>
-              <span>ACTUARIAL RISK & MORTALITY AUDIT ENGINE</span>
+              <span>INSURANCE POLICIES & COVERAGE</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              Insurance & Risk Coverage
+              Insurance & Protection Coverage
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="px-3 py-1.5 rounded-lg bg-[#080D16] border border-white/[0.08] text-xs font-mono text-slate-300 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#05DF85]" />
-              <span>Family Safety Net: <strong className="text-[#05DF85]">Fortified (92/100)</strong></span>
-            </div>
-
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Add Policy / Endorsement</span>
+              <span>Add Policy</span>
             </button>
           </div>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* 3 Real KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>TOTAL LIFE UNDERWRITTEN</span>
-              <span className="text-[#05DF85] text-[10px] font-bold">14.6x Income</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">₹3,50,00,000</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>Pure Term: ₹3.00 Cr</span>
-              <span className="text-slate-500">Corp GTL: ₹50.0L</span>
+            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL SUM ASSURED</div>
+            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalSumAssuredPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              {policies.length} active insurance policies
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-[#05DF85] mb-1">
-              <span>HEALTH & MEDICLAIM SHIELD</span>
-              <span className="text-cyan-400 text-[10px] font-bold">Base + Top-up</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">₹1,00,00,000</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>HDFC Base: ₹10.0L</span>
-              <span className="text-slate-500">Care Top-up: ₹90.0L</span>
+            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">ANNUAL COMMITTED PREMIUM</div>
+            <div className="text-2xl font-mono font-bold text-[#05DF85]">{formatCurrency(totalAnnualPremiumPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Amortized in your 30-day obligations
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>ANNUALIZED PREMIUM</span>
-              <span className="text-slate-400 text-[10px]">2.3% Inflow</span>
+            <div className="text-[11px] font-mono uppercase text-cyan-400 mb-1">PROTECTION AUDIT</div>
+            <div className="text-2xl font-mono font-bold text-white">
+              {policies.length === 0 ? 'Unprotected' : 'Active'}
             </div>
-            <div className="text-2xl font-mono font-bold text-white">₹68,400<span className="text-base text-slate-400 font-normal"> / yr</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2">
-              Sec 80C & 80D Deductions: <strong className="text-[#05DF85]">₹58,400 Maxed</strong>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-[#05DF85] mb-1">
-              <span>CATASTROPHIC CUSHION SCORE</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] text-[10px] font-bold">FORTIFIED</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">92<span className="text-sm text-slate-500 font-normal"> / 100</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2">
-              Inpatient exposure: <strong className="text-[#05DF85]">₹0 Out-of-pocket</strong>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Life, health, and asset policies
             </div>
           </div>
         </div>
 
-        {/* Human Life Value & Liabilities Radar */}
-        <div className="p-6 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {/* Tabs */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#080D16] border border-white/[0.08] text-xs font-mono w-fit">
+          {[
+            { id: 'all', label: `All (${policies.length})` },
+            { id: 'life', label: 'Life & Term' },
+            { id: 'health', label: 'Health Mediclaim' },
+            { id: 'vehicle', label: 'Vehicle' },
+            { id: 'home', label: 'Home / Property' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === tab.id ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+            <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-slate-400">Loading policy records...</p>
+          </div>
+        ) : filteredPolicies.length === 0 ? (
+          /* Clean Empty State */
+          <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Human Life Value (HLV) & Liabilities Coverage Radar</h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20">
-                  117.4% Funded Protection
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Stress test factoring mortgage principal (₹48.75L), 20-yr family sustenance, and children&apos;s higher education.
+              <h3 className="text-base font-bold text-white">No Insurance Policies Recorded</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                Add your term life insurance, health mediclaim, auto policy, or property coverage to monitor renewal dates and premiums.
               </p>
             </div>
-
-            <div className="text-right shrink-0 font-mono">
-              <div className="text-xs text-slate-400">TOTAL SHIELD CAPITAL</div>
-              <div className="text-xl font-bold text-[#05DF85]">₹3.50 Cr In-force</div>
-            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)]"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add First Policy</span>
+            </button>
           </div>
-
-          {/* Segmented Bar */}
-          <div className="space-y-2 pt-1">
-            <div className="w-full h-2.5 rounded-full bg-slate-800 flex overflow-hidden">
-              <div className="bg-rose-500 h-full w-[16.4%]" title="Mortgage 16.4%"></div>
-              <div className="bg-[#05DF85] h-full w-[53.7%]" title="Family Sustenance 53.7%"></div>
-              <div className="bg-cyan-400 h-full w-[21.8%]" title="Education 21.8%"></div>
-              <div className="bg-purple-400 h-full w-[8.1%]" title="Medical Buffer 8.1%"></div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-400 pt-1">
-              <div><span className="text-rose-400 font-semibold block">• Mortgage Principal</span><span>₹48.75L (16.4%)</span></div>
-              <div><span className="text-[#05DF85] font-semibold block">• 20-Yr Sustenance</span><span>₹1.60 Cr (53.7%)</span></div>
-              <div><span className="text-cyan-400 font-semibold block">• Higher Education</span><span>₹65.00L (21.8%)</span></div>
-              <div><span className="text-purple-400 font-semibold block">• Medical Emergency</span><span>₹24.00L (8.1%)</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Grid: Policy Vault (8 cols) + Right Risk Copilot & Emergency Kit (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Policy Vault (8 cols) */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 font-mono text-xs">
-                {[
-                  { id: 'all', label: `All (${policies.length})` },
-                  { id: 'life', label: 'Life' },
-                  { id: 'health', label: 'Health' },
-                  { id: 'asset', label: 'Asset' }
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setFilter(t.id)}
-                    className={`px-3 py-1 rounded-md transition-all ${
-                      filter === t.id ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400 hover:text-white bg-[#080D16]'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Policy Cards */}
-            <div className="space-y-3">
-              {filteredPolicies.map((pol) => (
-                <div
-                  key={pol.id}
-                  className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] hover:border-white/[0.15] transition-all space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{pol.name}</span>
-                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${pol.typeStyle}`}>
-                          {pol.typeBadge}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500 mt-0.5">{pol.policyNumber} • {pol.coverageTerm}</div>
-                    </div>
-
-                    <div className="text-right shrink-0 font-mono">
-                      <div className="text-lg font-bold text-white">
-                        ₹{pol.sumAssured.toLocaleString('en-IN')}
-                      </div>
-                      <div className="text-[10px] text-[#05DF85]">
-                        {pol.premium === 0 ? 'Employer Funded' : `Premium: ₹${pol.premium.toLocaleString('en-IN')}/yr`}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {pol.tags.map((tag, idx) => (
-                      <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/[0.06]">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span>Due: <strong className="text-white">{pol.dueDate}</strong></span>
-                    <button className="text-[#05DF85] hover:underline">View Policy Document →</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right Panels: Risk Copilot, Emergency Dispatch Kit & Disbursals (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Risk Copilot Intelligence */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#05DF85]" />
-                <h3 className="text-xs font-bold text-white">Risk Copilot Intelligence</h3>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-amber-500/20 text-xs space-y-1">
-                <div className="font-bold text-amber-400 flex items-center justify-between">
-                  <span>Critical Illness Rider Gap</span>
-                  <span className="text-[9px] font-mono px-1 rounded bg-amber-500/20">HIGH PRIORITY</span>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Recommend a ₹25.0L standalone rider to buffer income loss during prolonged recovery for major ailments.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-emerald-500/20 text-xs space-y-1">
-                <div className="font-bold text-[#05DF85]">Section 80D Tax Optimization Maxed</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Full ₹25,000 health deduction utilized under Sec 80D across self and spouse policies.
-                </p>
-              </div>
-            </div>
-
-            {/* Emergency Dispatch Kit Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white font-mono">
-                  <Shield className="w-3.5 h-3.5 text-[#05DF85]" />
-                  <span>Emergency Dispatch Kit</span>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-[#05DF85]"></span>
-              </div>
-
-              <div className="space-y-1.5 text-xs font-mono text-slate-300">
-                <div className="flex justify-between"><span>Primary Nominee:</span><span className="text-white font-bold">Priya Sharma (Spouse)</span></div>
-                <div className="flex justify-between"><span>24x7 Priority Line:</span><span className="text-[#05DF85]">1800-266-1400</span></div>
-                <div className="flex justify-between"><span>Digital Vault:</span><span>4/4 Verified on eIA</span></div>
-              </div>
-
-              <button
-                onClick={downloadEmergencyKit}
-                className="w-full py-2.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPolicies.map((pol) => (
+              <div
+                key={pol._id}
+                className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.08] space-y-4 flex flex-col justify-between"
               >
-                <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Download Emergency Kit (PDF)</span>
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">{pol.name}</h4>
+                      <div className="text-[10px] font-mono text-slate-400 uppercase">
+                        {pol.provider} • {pol.type}
+                      </div>
+                    </div>
 
-            {/* Upcoming Disbursals */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-white font-mono uppercase">Upcoming Disbursals</h3>
-                <span className="text-[10px] font-mono text-slate-500">12-MONTH SINKING</span>
-              </div>
-
-              <div className="space-y-2 text-xs font-mono">
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold">Tata AIA Term Life</div>
-                    <div className="text-[10px] text-slate-500">28 Nov • Sinking Pool Funded</div>
+                    <button
+                      onClick={() => handleDeletePolicy(pol._id, pol.name)}
+                      className="p-1 text-slate-500 hover:text-rose-400"
+                      title="Delete policy"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="text-white font-bold">₹28,500</div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Sum Assured</span>
+                      <strong className="text-white">{formatCurrency(pol.sumAssuredPaise)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Premium</span>
+                      <strong className="text-[#05DF85]">{formatCurrency(pol.premiumAmountPaise)}/{pol.premiumFrequency}</strong>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-bold">HDFC ERGO Health</div>
-                    <div className="text-[10px] text-slate-500">14 May 2025 • Auto-Disbursal</div>
-                  </div>
-                  <div className="text-white font-bold">₹22,100</div>
+                <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <span>Policy #{pol.policyNumber}</span>
+                  <span>Due: {pol.renewalDate ? new Date(pol.renewalDate).toLocaleDateString() : '—'}</span>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Add Policy Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#080D16] border border-white/[0.1] rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#05DF85]" />
+                <ShieldCheck className="w-4 h-4 text-[#05DF85]" />
                 <span>Add Insurance Policy</span>
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setShowAddModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            <form onSubmit={handleAddPolicy} className="space-y-3 font-sans text-xs">
+            <form onSubmit={handleCreatePolicy} className="space-y-4 text-xs font-sans">
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">POLICY / INSURER NAME</label>
+                <label className="block text-slate-300 font-medium mb-1">Policy Title *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. HDFC Life Click 2 Protect"
-                  value={newPol.name}
-                  onChange={(e) => setNewPol({ ...newPol, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
+                  placeholder="e.g. Tata AIA Term Life, HDFC ERGO Health"
+                  value={polForm.name}
+                  onChange={(e) => setPolForm({ ...polForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">CATEGORY</label>
-                <select
-                  value={newPol.category}
-                  onChange={(e) => setNewPol({ ...newPol, category: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
-                >
-                  <option value="life">Term Life Insurance</option>
-                  <option value="health">Health / Mediclaim</option>
-                  <option value="asset">Vehicle / Asset Protection</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Provider</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tata AIA, HDFC ERGO"
+                    value={polForm.provider}
+                    onChange={(e) => setPolForm({ ...polForm, provider: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Category</label>
+                  <select
+                    value={polForm.type}
+                    onChange={(e) => setPolForm({ ...polForm, type: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  >
+                    <option value="life">Term Life</option>
+                    <option value="health">Health / Mediclaim</option>
+                    <option value="vehicle">Vehicle (Auto)</option>
+                    <option value="home">Home / Property</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-mono">SUM ASSURED (₹)</label>
+                  <label className="block text-slate-300 font-medium mb-1">Sum Assured (₹) *</label>
                   <input
                     type="number"
+                    step="0.01"
+                    min="1"
                     required
-                    placeholder="e.g. 10000000"
-                    value={newPol.sumAssured}
-                    onChange={(e) => setNewPol({ ...newPol, sumAssured: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
+                    placeholder="e.g. 5000000.00"
+                    value={polForm.sumAssured}
+                    onChange={(e) => setPolForm({ ...polForm, sumAssured: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-slate-400 mb-1 font-mono">ANNUAL PREMIUM (₹)</label>
+                  <label className="block text-slate-300 font-medium mb-1">Premium (₹)</label>
                   <input
                     type="number"
-                    placeholder="e.g. 24000"
-                    value={newPol.premium}
-                    onChange={(e) => setNewPol({ ...newPol, premium: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
+                    step="0.01"
+                    placeholder="e.g. 18500.00"
+                    value={polForm.premiumAmount}
+                    onChange={(e) => setPolForm({ ...polForm, premiumAmount: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
                   />
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Premium Frequency</label>
+                  <select
+                    value={polForm.premiumFrequency}
+                    onChange={(e) => setPolForm({ ...polForm, premiumFrequency: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  >
+                    <option value="annual">Annual</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="half_yearly">Half Yearly</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Renewal Date</label>
+                  <input
+                    type="date"
+                    value={polForm.renewalDate}
+                    onChange={(e) => setPolForm({ ...polForm, renewalDate: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
                 >
-                  Save Policy
+                  {submitting ? 'Saving...' : 'Save Policy'}
                 </button>
               </div>
             </form>

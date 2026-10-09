@@ -97,6 +97,23 @@ export default function LoginPage() {
               </div>
             )}
 
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+              <div className="text-[11px] text-slate-300">
+                <span className="font-semibold text-[#05DF85]">Pro Test Account: </span>
+                <span className="font-mono text-slate-400">premium.tester@finpilot.app</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('premium.tester@finpilot.app');
+                  setPassword('FinPilot2026!');
+                }}
+                className="px-2.5 py-1 rounded bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-[10px] transition-all"
+              >
+                Auto-fill
+              </button>
+            </div>
+
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4 text-xs font-sans">
               <div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import WorkspaceHeader from '../components/WorkspaceHeader.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   CreditCard,
   Building,
@@ -14,455 +15,469 @@ import {
   Percent,
   Download,
   Shield,
+  Trash2,
+  Plus,
   X
 } from 'lucide-react';
 
 export default function LoansPage() {
-  const [selectedLoan, setSelectedLoan] = useState('home');
-  const [strategy, setStrategy] = useState('tenure');
-  const [extraMonthly, setExtraMonthly] = useState(10000);
-  const [annualStepUp, setAnnualStepUp] = useState(10);
-  const [annualBonus, setAnnualBonus] = useState(150000);
-  const [appliedPrepayment, setAppliedPrepayment] = useState(false);
+  const [loans, setLoans] = useState([]);
+  const [selectedLoanId, setSelectedLoanId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  // Active Loan Accounts
-  const loans = [
-    {
-      id: 'home',
-      name: 'HDFC Bank Home Loan',
-      accNumber: 'A/C 498421',
-      rate: '8.50%',
-      rateType: 'Floating Rate',
-      principal: 4250000,
-      sanction: 5500000,
-      emi: 47750,
-      tenureElapsed: 42,
-      tenureTotal: 240,
-      badge: 'Active',
-      taxLinked: 'Tax Sec 24(b) & 80C Linked'
-    },
-    {
-      id: 'car',
-      name: 'Axis Green EV Auto Loan',
-      accNumber: 'A/C 908183',
-      rate: '9.25%',
-      rateType: 'Fixed Rate',
-      principal: 525000,
-      sanction: 700000,
-      emi: 14200,
-      tenureElapsed: 18,
-      tenureTotal: 60,
-      badge: 'Active'
-    },
-    {
-      id: 'personal',
-      name: 'ICICI Gadget Personal Loan',
-      accNumber: 'A/C 119859',
-      rate: '11.50%',
-      rateType: 'Unsecured',
-      principal: 100000,
-      sanction: 200000,
-      emi: 6500,
-      tenureElapsed: 8,
-      tenureTotal: 24,
-      badge: 'High Cost'
+  // Prepayment simulation inputs
+  const [extraMonthly, setExtraMonthly] = useState(5000);
+
+  const [loanForm, setLoanForm] = useState({
+    name: '',
+    lender: '',
+    principal: '',
+    annualInterestRate: '8.5',
+    tenureMonths: '120',
+    emi: '',
+    startDate: new Date().toISOString().slice(0, 10)
+  });
+
+  useEffect(() => {
+    loadLoans();
+  }, []);
+
+  async function loadLoans() {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await apiRequest('/loans');
+      if (res.success && res.data?.loans) {
+        setLoans(res.data.loans);
+        if (res.data.loans.length > 0 && !selectedLoanId) {
+          setSelectedLoanId(res.data.loans[0]._id);
+        }
+      } else {
+        setLoans([]);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load loans.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  }
 
-  // 12-Month Amortization Preview Table Data
-  const amortizationSchedule = [
-    { inst: '#43', date: '05 Nov 2024', open: 4250000, emi: 47750, p: 17645, i: 30105, prepay: 10000, close: 4222355, rem: 197 },
-    { inst: '#44', date: '05 Dec 2024', open: 4222355, emi: 47750, p: 17841, i: 29909, prepay: 10000, close: 4194514, rem: 195 },
-    { inst: '#45', date: '05 Jan 2025', open: 4194514, emi: 47750, p: 18038, i: 29712, prepay: 10000, close: 4166476, rem: 193 },
-    { inst: '#46', date: '05 Feb 2025', open: 4166476, emi: 47750, p: 18237, i: 29513, prepay: 10000, close: 4138239, rem: 191 },
-    { inst: '#47 (LUMP)', date: '05 Mar 2025', open: 4138239, emi: 47750, p: 18438, i: 29312, prepay: 160000, close: 3959801, rem: 178 }
-  ];
-
-  const exportScheduleCSV = () => {
-    const headers = 'Inst,DueDate,OpeningBalance,BaseEMI,Principal,Interest,Prepayment,ClosingBalance,RemainingMonths\n';
-    const rows = amortizationSchedule.map((s) => `"${s.inst}","${s.date}",${s.open},${s.emi},${s.p},${s.i},${s.prepay},${s.close},${s.rem}`).join('\n');
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `FinPilot_Amortization_Schedule_${Date.now()}.csv`;
-    a.click();
+  // Auto-calculate EMI in form when principal, rate, or tenure change
+  const autoCalcEmi = (p, r, t) => {
+    const principal = parseFloat(p);
+    const rateAnnual = parseFloat(r);
+    const tenure = parseInt(t, 10);
+    if (!principal || !rateAnnual || !tenure) return '';
+    const monthlyRate = rateAnnual / 12 / 100;
+    const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, tenure)) / (Math.pow(1 + monthlyRate, tenure) - 1);
+    return isNaN(emi) ? '' : emi.toFixed(2);
   };
+
+  const handleCreateLoan = async (e) => {
+    e.preventDefault();
+    if (!loanForm.name || !loanForm.principal) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const principalPaise = Math.round(parseFloat(loanForm.principal) * 100);
+      const rateAnnual = parseFloat(loanForm.annualInterestRate);
+      const tenureMonths = parseInt(loanForm.tenureMonths, 10);
+      const emiVal = parseFloat(loanForm.emi || autoCalcEmi(loanForm.principal, loanForm.annualInterestRate, loanForm.tenureMonths));
+      const emiPaise = Math.round(emiVal * 100);
+
+      const res = await apiRequest('/loans', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: loanForm.name.trim(),
+          lender: loanForm.lender.trim() || 'Bank',
+          principalPaise,
+          annualInterestRate: rateAnnual,
+          tenureMonths,
+          emiPaise,
+          startDate: new Date(loanForm.startDate).toISOString()
+        })
+      });
+
+      if (res.success) {
+        setShowAddModal(false);
+        setLoanForm({
+          name: '',
+          lender: '',
+          principal: '',
+          annualInterestRate: '8.5',
+          tenureMonths: '120',
+          emi: '',
+          startDate: new Date().toISOString().slice(0, 10)
+        });
+        await loadLoans();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create loan.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteLoan = async (id, name) => {
+    if (!window.confirm(`Delete loan record "${name}"?`)) return;
+    try {
+      await apiRequest(`/loans/${id}`, { method: 'DELETE' });
+      await loadLoans();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const selectedLoan = loans.find((l) => l._id === selectedLoanId) || loans[0] || null;
+
+  // Real amortization preview for selected loan
+  const generateSchedule = (loan) => {
+    if (!loan) return [];
+    const schedule = [];
+    let balance = loan.outstandingBalancePaise || loan.principalPaise;
+    const monthlyRate = loan.annualInterestRate / 12 / 100;
+    const baseEmi = loan.emiPaise;
+
+    for (let i = 1; i <= 6; i++) {
+      if (balance <= 0) break;
+      const interest = Math.round(balance * monthlyRate);
+      const principalPart = Math.min(balance, baseEmi - interest);
+      const closing = Math.max(0, balance - principalPart);
+
+      schedule.push({
+        inst: `#${i}`,
+        open: balance,
+        emi: baseEmi,
+        principal: principalPart,
+        interest,
+        close: closing
+      });
+
+      balance = closing;
+    }
+    return schedule;
+  };
+
+  const schedule = generateSchedule(selectedLoan);
+
+  const totalOutstandingPaise = loans.reduce((acc, l) => acc + (l.outstandingBalancePaise || l.principalPaise || 0), 0);
+  const totalMonthlyEmiPaise = loans.reduce((acc, l) => acc + (l.emiPaise || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col bg-[#05080E] text-slate-100 font-sans min-h-screen">
       <WorkspaceHeader onRecordTransaction={() => {}} />
 
       <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-        {/* Header */}
+        {/* Title Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">DEBT MANAGEMENT & AMORTIZATION LAB</span>
+              <span className="text-[#05DF85] font-semibold">LIABILITY RECONCILIATION</span>
               <span className="text-slate-600">//</span>
-              <span>MULTI-LOAN ACCELERATION</span>
+              <span>LOANS, EMIs & DEBT PREPAYMENT</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              Loans, EMIs & Prepayment Lab
+              Loans & Debt Prepayment Planner
             </h1>
-            <div className="flex items-center gap-3 text-xs font-mono text-slate-400 pt-0.5">
-              <span>3 ACTIVE LIABILITIES</span>
-              <span>•</span>
-              <span>AVERAGE COST OF DEBT: <strong className="text-[#05DF85]">8.64%</strong></span>
-            </div>
           </div>
 
           <div className="flex items-center gap-2.5">
             <button
-              onClick={() => alert('Loan balance transfer comparison initialized.')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#080D16] hover:bg-[#0D1422] text-slate-300 border border-white/[0.08] text-xs font-medium transition-all"
-            >
-              <span>Compare Loan Switch</span>
-            </button>
-
-            <button
-              onClick={() => setAppliedPrepayment(true)}
+              onClick={() => setShowAddModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all"
             >
-              <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Simulate Prepayment</span>
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Add Loan Record</span>
             </button>
           </div>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* 3 Real KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>TOTAL OUTSTANDING PRINCIPAL</span>
-              <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 text-[10px] font-bold">21.4% PAID</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">₹48,75,000<span className="text-base text-slate-400 font-normal">.00</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>Sanction: ₹62,00,000</span>
-              <span className="text-slate-300">Burn: ₹68,450/mo</span>
+            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL OUTSTANDING DEBT</div>
+            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalOutstandingPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              {loans.length} active loan liabilities
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>TOTAL INTEREST BURDEN</span>
-              <Percent className="w-3.5 h-3.5 text-rose-400" />
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">₹34,18,200</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span className="text-rose-400 font-bold">Interest / Principal: 70.1%</span>
-              <span className="text-slate-500">240 mos baseline</span>
+            <div className="text-[11px] font-mono uppercase text-rose-400 mb-1">COMMITTED MONTHLY EMIs</div>
+            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalMonthlyEmiPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Auto-deducted in 30-day obligations
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-[#05DF85] mb-1">
-              <span>AI POTENTIAL SAVINGS</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] text-[10px] font-bold">SAVINGS</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">₹14,85,600<span className="text-sm font-normal text-emerald-300/80 ml-1">Saved</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span className="text-[#05DF85] font-bold">Tenure: 4.8 Years Off</span>
-              <span className="text-slate-500">via ₹10k/mo step-up</span>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-slate-400 mb-1">
-              <span>DEBT-TO-INCOME (DTI)</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[#05DF85] text-[10px] font-bold">HEALTHY</span>
-            </div>
-            <div className="text-2xl font-mono font-bold text-white">28.5%</div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>₹68,450 EMI / ₹2.40L Inflow</span>
-              <span className="text-slate-500">Max 40% Cap</span>
+            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">AMORTIZATION ENGINE</div>
+            <div className="text-2xl font-mono font-bold text-[#05DF85]">Deterministic</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Reducing balance interest formula
             </div>
           </div>
         </div>
 
-        {/* Middle Grid: Prepayment Simulator (8 cols) + Active Loans & Copilot (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Prepayment Simulator (8 cols) */}
-          <div className="lg:col-span-8 p-6 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-6">
-            {/* Loan Selector Tabs */}
-            <div className="space-y-2">
-              <div className="text-xs font-mono uppercase text-slate-400">SELECT LOAN TO ACCELERATE:</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-xs">
-                {loans.map((l) => (
-                  <button
-                    key={l.id}
-                    onClick={() => setSelectedLoan(l.id)}
-                    className={`p-3 rounded-lg text-left border transition-all ${
-                      selectedLoan === l.id
-                        ? 'bg-[#0D1422] border-[#05DF85] text-white shadow-sm'
-                        : 'bg-[#0D1422]/60 border-white/[0.06] text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="font-bold truncate">{l.name}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      ₹{(l.principal / 100000).toFixed(2)}L @ <strong className="text-[#05DF85]">{l.rate}</strong>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Prepayment Strategy Parameters */}
-            <div className="space-y-4 pt-2 border-t border-white/[0.06]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">Prepayment Strategy Parameters</h3>
-                <div className="flex items-center p-0.5 rounded-lg bg-[#0D1422] border border-white/[0.06] text-xs font-mono">
-                  <button
-                    onClick={() => setStrategy('tenure')}
-                    className={`px-3 py-1 rounded transition-all ${
-                      strategy === 'tenure' ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400'
-                    }`}
-                  >
-                    Reduce Tenure (Max Savings)
-                  </button>
-                  <button
-                    onClick={() => setStrategy('emi')}
-                    className={`px-3 py-1 rounded transition-all ${
-                      strategy === 'emi' ? 'bg-[#05DF85] text-slate-950 font-bold' : 'text-slate-400'
-                    }`}
-                  >
-                    Reduce Monthly EMI
-                  </button>
-                </div>
-              </div>
-
-              {/* Sliders Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
-                {/* Extra Monthly Prepayment */}
-                <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-2">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Extra Monthly:</span>
-                    <strong className="text-[#05DF85]">₹{extraMonthly.toLocaleString('en-IN')}</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="2000"
-                    value={extraMonthly}
-                    onChange={(e) => setExtraMonthly(Number(e.target.value))}
-                    className="w-full accent-[#05DF85]"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>₹0</span>
-                    <span>₹25k</span>
-                    <span>₹50,000</span>
-                  </div>
-                </div>
-
-                {/* Annual Step-Up */}
-                <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-2">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Annual Step-Up:</span>
-                    <strong className="text-cyan-400">{annualStepUp}% / yr</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="25"
-                    step="5"
-                    value={annualStepUp}
-                    onChange={(e) => setAnnualStepUp(Number(e.target.value))}
-                    className="w-full accent-cyan-400"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>0%</span>
-                    <span>10%</span>
-                    <span>25%</span>
-                  </div>
-                </div>
-
-                {/* March Bonus Lump Sum */}
-                <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-2">
-                  <div className="flex justify-between text-slate-400">
-                    <span>Annual Bonus:</span>
-                    <strong className="text-purple-400">₹{annualBonus.toLocaleString('en-IN')}</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="500000"
-                    step="25000"
-                    value={annualBonus}
-                    onChange={(e) => setAnnualBonus(Number(e.target.value))}
-                    className="w-full accent-purple-400"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>₹0</span>
-                    <span>₹2.5L</span>
-                    <span>₹5.0 Lakhs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Amortization Trajectory Comparison Vector */}
-            <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <div>
-                  <h4 className="font-bold text-white">Amortization Trajectory Comparison</h4>
-                  <span className="text-[11px] text-slate-400">Principal remaining over time: Original vs Accelerated Plan</span>
-                </div>
-                <div className="flex items-center gap-4 text-slate-400">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>Baseline (240 mos)</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#05DF85]"></span>Accelerated Plan (142 mos)</span>
-                </div>
-              </div>
-
-              {/* Trajectory Vector */}
-              <div className="h-28 flex items-end">
-                <svg className="w-full h-24" viewBox="0 0 600 100" fill="none">
-                  {/* Baseline curve */}
-                  <path d="M0 20 Q 300 50, 600 90" stroke="#64748B" strokeWidth="2" strokeDasharray="4 4" fill="none" />
-                  {/* Accelerated curve */}
-                  <path d="M0 20 Q 200 45, 380 90" stroke="#05DF85" strokeWidth="3" fill="none" />
-                  <circle cx="380" cy="90" r="4" fill="#05DF85" />
-                </svg>
-              </div>
-
-              {/* Summary 3-Col Box */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 font-mono text-xs">
-                <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06]">
-                  <div className="text-[10px] text-slate-400 uppercase">DEBT-FREEDOM TARGET</div>
-                  <div className="text-base font-bold text-[#05DF85] mt-0.5">Aug 2036</div>
-                  <div className="text-[10px] text-slate-500">vs Oct 2044 baseline</div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06]">
-                  <div className="text-[10px] text-slate-400 uppercase">NET INTEREST PAYABLE</div>
-                  <div className="text-base font-bold text-white mt-0.5">₹17.6 Lakhs</div>
-                  <div className="text-[10px] text-rose-400">Original: ₹31.8 Lakhs</div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06]">
-                  <div className="text-[10px] text-slate-400 uppercase">TENURE CUT</div>
-                  <div className="text-base font-bold text-cyan-400 mt-0.5">8 Yrs 2 Mos</div>
-                  <div className="text-[10px] text-[#05DF85]">98 EMIs Eliminated!</div>
-                </div>
-              </div>
-            </div>
+        {/* Loans Content */}
+        {loading ? (
+          <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+            <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-slate-400">Loading loan records...</p>
           </div>
-
-          {/* Right Column: Active Loans & Debt Copilot (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Active Loan Accounts */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-white font-mono uppercase">Active Loan Accounts</h3>
-                <span className="text-[10px] font-mono text-slate-400">3 FACILITIES</span>
-              </div>
-
-              <div className="space-y-2.5 text-xs font-mono">
-                {loans.map((l) => (
-                  <div key={l.id} className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{l.name}</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white/[0.05] text-[#05DF85]">
-                        {l.badge}
-                      </span>
-                    </div>
-                    <div className="text-base font-bold text-white">
-                      ₹{l.principal.toLocaleString('en-IN')}
-                      <span className="text-[11px] text-slate-500 font-normal"> of ₹{l.sanction.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 pt-0.5">
-                      <span>EMI: ₹{l.emi.toLocaleString('en-IN')}</span>
-                      <span>Tenure: {l.tenureElapsed} / {l.tenureTotal} mos</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        ) : loans.length === 0 ? (
+          /* Clean Empty State */
+          <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+              <CreditCard className="w-6 h-6" />
             </div>
-
-            {/* Debt Copilot Intelligence */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3.5">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#05DF85]" />
-                <h3 className="text-xs font-bold text-white">Debt Copilot Intelligence</h3>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-rose-500/20 text-xs space-y-1">
-                <div className="font-bold text-rose-300">Avalanche Strategy Priority</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Pay off ICICI Gadget Loan (11.5%) first using ₹1,00,000 from next month&apos;s surplus. Instantly unlocks <strong>₹6,500/month</strong> in free cash flow with 0% prepayment penalty.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] text-xs space-y-1">
-                <div className="font-bold text-[#05DF85]">Tax Deduction Optimization</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Your home loan interest is ₹3.6L/year while Sec 24(b) caps relief at ₹2.0L. Prepaying beyond the cap yields a risk-free <strong>8.50% effective return</strong>.
-                </p>
-              </div>
-
-              <button
-                onClick={() => alert('Recommended prepayment schedule applied to active ledger plan.')}
-                className="w-full py-2.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md transition-all"
-              >
-                Apply Recommended Prepayment Plan →
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom: Upcoming 12 Months Amortization Preview Table */}
-        <div className="p-6 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-bold text-white">Upcoming 12 Months Amortization Preview</h3>
-              <p className="text-xs text-slate-400">Simulated with extra ₹10,000 prepayment starting Nov 2024</p>
+              <h3 className="text-base font-bold text-white">No Loans or Liabilities Tracked</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                Add your home loan, car loan, education loan, or personal loan to track repayment schedules and calculate interest savings from prepayments.
+              </p>
             </div>
-
             <button
-              onClick={exportScheduleCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] text-xs font-medium font-mono transition-all"
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)]"
             >
-              <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span>Export CSV</span>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add First Loan</span>
             </button>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Loans List (5 cols) */}
+            <div className="lg:col-span-5 space-y-3">
+              {loans.map((l) => {
+                const isSelected = selectedLoan && selectedLoan._id === l._id;
+                return (
+                  <div
+                    key={l._id}
+                    onClick={() => setSelectedLoanId(l._id)}
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all space-y-3 ${
+                      isSelected
+                        ? 'bg-[#0D1422] border-[#05DF85] shadow-[0_0_20px_rgba(5,223,133,0.15)]'
+                        : 'bg-[#080D16] border-white/[0.08] hover:border-white/[0.15]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{l.name}</h4>
+                        <div className="text-[10px] font-mono text-slate-400">
+                          {l.lender} • {l.annualInterestRate}% p.a.
+                        </div>
+                      </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="border-b border-white/[0.06] text-[10px] uppercase text-slate-500 bg-[#0D1422]/50">
-                  <th className="p-2.5">INST. #</th>
-                  <th className="p-2.5">DUE DATE</th>
-                  <th className="p-2.5">OPENING BALANCE</th>
-                  <th className="p-2.5">BASE EMI</th>
-                  <th className="p-2.5">PRINCIPAL</th>
-                  <th className="p-2.5">INTEREST</th>
-                  <th className="p-2.5 text-[#05DF85]">PREPAYMENT</th>
-                  <th className="p-2.5">CLOSING BALANCE</th>
-                  <th className="p-2.5 text-right">REMAINING</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04] text-slate-300">
-                {amortizationSchedule.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-white/[0.02]">
-                    <td className="p-2.5 font-bold text-white">{row.inst}</td>
-                    <td className="p-2.5 text-slate-400">{row.date}</td>
-                    <td className="p-2.5">₹{row.open.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5">₹{row.emi.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5 text-[#05DF85]">₹{row.p.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5 text-rose-400">₹{row.i.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5 font-bold text-[#05DF85]">+₹{row.prepay.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5 font-semibold text-white">₹{row.close.toLocaleString('en-IN')}</td>
-                    <td className="p-2.5 text-right text-slate-400">{row.rem} mos</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLoan(l._id, l.name);
+                        }}
+                        className="p-1 text-slate-500 hover:text-rose-400"
+                        title="Delete loan"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase block">Outstanding</span>
+                        <strong className="text-white">{formatCurrency(l.outstandingBalancePaise || l.principalPaise)}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase block">Monthly EMI</span>
+                        <strong className="text-rose-400">-{formatCurrency(l.emiPaise)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right: Amortization Breakdown (7 cols) */}
+            <div className="lg:col-span-7 rounded-2xl bg-[#080D16] border border-white/[0.08] p-6 space-y-5">
+              {selectedLoan && (
+                <>
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      Amortization Schedule: {selectedLoan.name}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Calculated using standard reducing-balance formula ({selectedLoan.annualInterestRate}% p.a.)
+                    </p>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead>
+                        <tr className="border-b border-white/[0.06] text-slate-400 text-[10px] uppercase">
+                          <th className="py-2">Month</th>
+                          <th className="py-2">Opening</th>
+                          <th className="py-2">EMI</th>
+                          <th className="py-2">Principal</th>
+                          <th className="py-2">Interest</th>
+                          <th className="py-2">Closing</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {schedule.map((s) => (
+                          <tr key={s.inst}>
+                            <td className="py-2.5 font-bold text-white">{s.inst}</td>
+                            <td className="py-2.5 text-slate-300">{formatCurrency(s.open)}</td>
+                            <td className="py-2.5 text-rose-400">{formatCurrency(s.emi)}</td>
+                            <td className="py-2.5 text-[#05DF85]">{formatCurrency(s.principal)}</td>
+                            <td className="py-2.5 text-slate-400">{formatCurrency(s.interest)}</td>
+                            <td className="py-2.5 text-white font-bold">{formatCurrency(s.close)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add Loan Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[#05DF85]" />
+                <span>Add Loan Record</span>
+              </h3>
+              <button onClick={() => setShowAddModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <form onSubmit={handleCreateLoan} className="space-y-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Loan Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC Home Loan, Car Loan"
+                  value={loanForm.name}
+                  onChange={(e) => setLoanForm({ ...loanForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Lender / Bank</label>
+                <input
+                  type="text"
+                  placeholder="e.g. HDFC Bank, SBI, ICICI"
+                  value={loanForm.lender}
+                  onChange={(e) => setLoanForm({ ...loanForm, lender: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Principal (₹ INR) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    required
+                    placeholder="e.g. 2500000.00"
+                    value={loanForm.principal}
+                    onChange={(e) => {
+                      const p = e.target.value;
+                      const emi = autoCalcEmi(p, loanForm.annualInterestRate, loanForm.tenureMonths);
+                      setLoanForm({ ...loanForm, principal: p, emi });
+                    }}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Interest Rate (% p.a.) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.1"
+                    required
+                    value={loanForm.annualInterestRate}
+                    onChange={(e) => {
+                      const r = e.target.value;
+                      const emi = autoCalcEmi(loanForm.principal, r, loanForm.tenureMonths);
+                      setLoanForm({ ...loanForm, annualInterestRate: r, emi });
+                    }}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Tenure (Months) *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={loanForm.tenureMonths}
+                    onChange={(e) => {
+                      const t = e.target.value;
+                      const emi = autoCalcEmi(loanForm.principal, loanForm.annualInterestRate, t);
+                      setLoanForm({ ...loanForm, tenureMonths: t, emi });
+                    }}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Monthly EMI (₹ INR)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Auto-calculated"
+                    value={loanForm.emi}
+                    onChange={(e) => setLoanForm({ ...loanForm, emi: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#05DF85]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
+                >
+                  {submitting ? 'Creating...' : 'Save Loan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

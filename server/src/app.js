@@ -19,6 +19,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import billingRoutes from './routes/billingRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -68,6 +69,7 @@ export function createApp() {
   apiRouter.use('/insurance', insuranceRoutes);
   apiRouter.use('/dashboard', dashboardRoutes);
   apiRouter.use('/reports', reportRoutes);
+  apiRouter.use('/notifications', notificationRoutes);
   apiRouter.use('/billing', billingRoutes);
   apiRouter.use('/ai', aiRoutes);
   apiRouter.use('/public', publicRoutes);

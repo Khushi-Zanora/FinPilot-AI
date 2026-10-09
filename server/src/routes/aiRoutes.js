@@ -17,8 +17,10 @@ router.use(authenticate, requireAuth);
 
 router.get('/starter-prompts', getStarterPrompts);
 router.get('/conversations', getConversations);
+router.get('/history', getConversations);
 router.get('/conversations/:id', getConversationMessages);
 router.post('/chat', aiRateLimiter, validate(aiChatSchema), sendChatMessage);
+router.post('/query', aiRateLimiter, validate(aiChatSchema), sendChatMessage);
 router.delete('/conversations/:id', deleteConversation);
 
 export default router;

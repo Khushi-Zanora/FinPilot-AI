@@ -7,11 +7,17 @@ export const createLoanSchema = z.object({
   body: z.object({
     name: z.string().min(1, 'Loan name is required').max(100),
     lender: z.string().max(100).optional().default(''),
-    loanType: z.enum(['home', 'personal', 'auto', 'education', 'gold', 'credit_card_emi', 'other']).default('personal'),
-    originalPrincipalPaise: z.number().int().min(1, 'Principal must be at least 1 paisa'),
-    annualInterestRatePercent: z.number().min(0).max(100),
+    loanType: z.string().optional().default('personal'),
+    originalPrincipalPaise: z.number().int().min(1).optional(),
+    principalPaise: z.number().int().min(1).optional(),
+    annualInterestRatePercent: z.number().min(0).max(100).optional(),
+    annualInterestRate: z.number().min(0).max(100).optional(),
     tenureMonths: z.number().int().min(1),
+    emiPaise: z.number().int().min(0).optional(),
     startDate: z.string().datetime().optional().default(() => new Date().toISOString())
+  }).refine((data) => data.originalPrincipalPaise || data.principalPaise, {
+    message: 'Principal amount is required',
+    path: ['originalPrincipalPaise']
   })
 });
 
@@ -51,22 +57,31 @@ export async function getLoans(req, res, next) {
 
 export async function createLoan(req, res, next) {
   try {
-    const { originalPrincipalPaise, annualInterestRatePercent, tenureMonths, startDate } = req.body;
+    const principalPaise = req.body.originalPrincipalPaise || req.body.principalPaise;
+    const ratePercent = req.body.annualInterestRatePercent !== undefined ? req.body.annualInterestRatePercent : (req.body.annualInterestRate || 8.5);
+    const tenureMonths = req.body.tenureMonths || 12;
+    const startDate = req.body.startDate ? new Date(req.body.startDate) : new Date();
 
     const amortization = calculateLoanAmortization({
-      principalPaise: originalPrincipalPaise,
-      annualInterestRatePercent,
+      principalPaise,
+      annualInterestRatePercent: ratePercent,
       tenureMonths,
-      startDate: startDate || new Date()
+      startDate
     });
 
     const nextDueDate = amortization.schedule[0] ? new Date(amortization.schedule[0].dueDate) : null;
 
     const loan = await Loan.create({
-      ...req.body,
+      name: req.body.name,
+      lender: req.body.lender || '',
+      loanType: req.body.loanType || 'personal',
+      originalPrincipalPaise: principalPaise,
+      annualInterestRatePercent: ratePercent,
+      tenureMonths,
+      startDate,
       userId: req.userId,
-      emiPaise: amortization.emiPaise,
-      remainingPrincipalPaise: originalPrincipalPaise,
+      emiPaise: req.body.emiPaise || amortization.emiPaise,
+      remainingPrincipalPaise: principalPaise,
       totalInterestPaise: amortization.totalInterestPaise,
       nextDueDate
     });

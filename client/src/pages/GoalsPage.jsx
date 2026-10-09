@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import WorkspaceHeader from '../components/WorkspaceHeader.jsx';
+import { apiRequest, formatCurrency } from '../api/client.js';
 import {
   Target,
   Shield,
@@ -15,437 +16,463 @@ import {
   Layers,
   ChevronRight,
   ShieldCheck,
+  Trash2,
   X
 } from 'lucide-react';
 
 export default function GoalsPage() {
-  const [filter, setFilter] = useState('all');
+  const [goals, setGoals] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [rebalanceApplied, setRebalanceApplied] = useState(false);
+  const [showContributeModal, setShowContributeModal] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [contributeAmount, setContributeAmount] = useState('');
+  const [contributeAccountId, setContributeAccountId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const [goals, setGoals] = useState([
-    {
-      id: 'g-1',
-      tier: 'TIER 0 // NON-NEGOTIABLE',
-      badge: 'AUTONOMOUS',
-      name: 'Emergency Runway Fortress',
-      desc: 'Air-gapped 6.2 months of fixed baseline burn (mortgage, groceries, health retainer, utilities).',
-      target: 600000,
-      current: 600000,
-      percent: 100.0,
-      vaultStatus: 'Vault Sealed: HDFC High-Yield Multi-Option Sweep (7.25% FD)',
-      nextReview: '01 Jan 2025',
-      yieldRate: 'Yield: +₹3,625/mo compounding',
-      color: '#05DF85'
-    },
-    {
-      id: 'g-2',
-      tier: 'TIER 2 // TECH SINKING',
-      badge: '2 MO AHEAD',
-      name: 'MacBook Pro M3 Max & Studio Rig',
-      desc: 'Equipment sinking fund for workstation refresh + Pro Display studio setup.',
-      target: 250000,
-      current: 185000,
-      percent: 74.0,
-      targetDate: '20 Dec 2024',
-      autoSip: '₹25,000/mo (05th)',
-      linkedHold: 'Linked: ₹75,000 Apple BKC Pre-authorization Hold',
-      color: '#22D3EE'
-    },
-    {
-      id: 'g-3',
-      tier: 'TIER 3 // LIFESTYLE',
-      badge: 'PACING OPTIMAL',
-      name: 'Japan Cherry Blossom Expedition 2025',
-      desc: 'Tokyo, Kyoto, and Hokkaido rail itinerary. Flight bookings lock on 15 Jan 2025.',
-      target: 400000,
-      current: 220000,
-      percent: 55.0,
-      targetDate: '31 Mar 2025',
-      autoSip: '₹35,000/mo (Tata Liquid Fund Direct)',
-      balanceInfo: '₹1,80,000 balance over 5 remaining pay cycles',
-      color: '#818CF8'
-    },
-    {
-      id: 'g-4',
-      tier: 'TIER 1 // OBLIGATORY COMMITMENTS',
-      badge: 'NEAR LOCK',
-      name: 'Annual Insurance & Tax Advance Sinking Pool',
-      desc: 'Pre-funded escrow amortizing non-monthly liabilities without touching operating cash flow.',
-      target: 350000,
-      current: 290000,
-      percent: 82.8,
-      milestone: 'Nov 28: Tata AIA Term Life (₹28,500) • Dec 15: Q3 Advance Tax (₹1,15,000)',
-      color: '#F472B6'
-    },
-    {
-      id: 'g-5',
-      tier: 'TIER 2 // OPPORTUNISTIC',
-      badge: 'GROWTH',
-      name: 'Angel Syndicate Reserve',
-      desc: 'Tranche pool for early-stage B2B SaaS syndicates. ₹15k/mo + 100% of bonus allocations.',
-      target: 1000000,
-      current: 450000,
-      percent: 45.0,
-      targetDate: 'H1 2025 Deployment',
-      color: '#34D399'
-    },
-    {
-      id: 'g-6',
-      tier: 'TIER 2 // CAPITAL OUTLAY',
-      badge: 'CAPITAL',
-      name: 'Electric Vehicle Down Payment',
-      desc: 'Down payment buffer for zero-depreciation luxury EV transition. Target date August.',
-      target: 500000,
-      current: 100000,
-      percent: 20.0,
-      targetDate: 'Aug 2025',
-      color: '#FBBF24'
+  const [goalForm, setGoalForm] = useState({
+    name: '',
+    targetAmount: '',
+    targetDate: '',
+    category: 'emergency_fund',
+    priority: 'medium'
+  });
+
+  useEffect(() => {
+    loadGoalsAndAccounts();
+  }, []);
+
+  async function loadGoalsAndAccounts() {
+    try {
+      setLoading(true);
+      setError('');
+
+      const [gRes, aRes] = await Promise.all([
+        apiRequest('/goals').catch(() => ({ success: false })),
+        apiRequest('/accounts').catch(() => ({ success: false }))
+      ]);
+
+      if (gRes.success && gRes.data?.goals) {
+        setGoals(gRes.data.goals);
+      } else {
+        setGoals([]);
+      }
+
+      if (aRes.success && aRes.data?.accounts) {
+        setAccounts(aRes.data.accounts);
+        if (aRes.data.accounts.length > 0) {
+          setContributeAccountId(aRes.data.accounts[0]._id);
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load savings goals.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }
 
-  const [newGoal, setNewGoal] = useState({ name: '', target: '', targetDate: '', autoSip: '' });
-
-  const handleCreateGoal = (e) => {
+  const handleCreateGoal = async (e) => {
     e.preventDefault();
-    if (!newGoal.name || !newGoal.target) return;
-    const tgt = parseFloat(newGoal.target);
-    const goalObj = {
-      id: `g-${Date.now()}`,
-      tier: 'TIER 2 // CUSTOM TARGET',
-      badge: 'ACTIVE',
-      name: newGoal.name,
-      desc: `Dedicated savings target scheduled for ${newGoal.targetDate || '2025'}.`,
-      target: tgt,
-      current: 0,
-      percent: 0,
-      targetDate: newGoal.targetDate || 'Dec 2025',
-      autoSip: newGoal.autoSip ? `₹${newGoal.autoSip}/mo` : 'Manual Allocation',
-      color: '#05DF85'
-    };
-    setGoals([...goals, goalObj]);
-    setShowAddModal(false);
-    setNewGoal({ name: '', target: '', targetDate: '', autoSip: '' });
+    if (!goalForm.name || !goalForm.targetAmount) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const targetAmountPaise = Math.round(parseFloat(goalForm.targetAmount) * 100);
+      if (isNaN(targetAmountPaise) || targetAmountPaise <= 0) {
+        throw new Error('Please enter a valid target amount.');
+      }
+
+      const res = await apiRequest('/goals', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: goalForm.name.trim(),
+          targetAmountPaise,
+          targetDate: goalForm.targetDate ? new Date(goalForm.targetDate).toISOString() : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          purpose: goalForm.category || 'emergency_fund',
+          category: goalForm.category,
+          priority: goalForm.priority
+        })
+      });
+
+      if (res.success) {
+        setShowAddModal(false);
+        setGoalForm({
+          name: '',
+          targetAmount: '',
+          targetDate: '',
+          category: 'emergency_fund',
+          priority: 'medium'
+        });
+        await loadGoalsAndAccounts();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create goal.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleContribute = async (e) => {
+    e.preventDefault();
+    if (!selectedGoal || !contributeAmount) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const amountPaise = Math.round(parseFloat(contributeAmount) * 100);
+      if (isNaN(amountPaise) || amountPaise <= 0) {
+        throw new Error('Please enter a valid contribution amount.');
+      }
+
+      const res = await apiRequest(`/goals/${selectedGoal._id}/contribute`, {
+        method: 'POST',
+        body: JSON.stringify({
+          amountPaise,
+          accountId: contributeAccountId || undefined
+        })
+      });
+
+      if (res.success) {
+        setShowContributeModal(false);
+        setContributeAmount('');
+        setSelectedGoal(null);
+        await loadGoalsAndAccounts();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to record contribution.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteGoal = async (id, name) => {
+    if (!window.confirm(`Delete savings goal "${name}"?`)) return;
+    try {
+      await apiRequest(`/goals/${id}`, { method: 'DELETE' });
+      await loadGoalsAndAccounts();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const totalTargetPaise = goals.reduce((acc, g) => acc + (g.targetAmountPaise || 0), 0);
+  const totalSavedPaise = goals.reduce((acc, g) => acc + (g.currentAmountPaise || 0), 0);
+  const overallPercent = totalTargetPaise > 0 ? Math.round((totalSavedPaise / totalTargetPaise) * 100) : 0;
 
   return (
     <div className="flex-1 flex flex-col bg-[#05080E] text-slate-100 font-sans min-h-screen">
-      <WorkspaceHeader onRecordTransaction={() => {}} />
+      <WorkspaceHeader onRecordTransaction={() => {}} onNewGoal={() => setShowAddModal(true)} />
 
       <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-        {/* Header */}
+        {/* Title Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">WEALTH & LIQUIDITY</span>
+              <span className="text-[#05DF85] font-semibold">CAPITAL EARMARKS</span>
               <span className="text-slate-600">//</span>
-              <span>VIRTUAL EARMARKING & SINKING FUNDS ENGINE</span>
+              <span>SAVINGS GOALS & SINKING FUNDS</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              Savings Goals & Earmarks
+              Savings Goals & Sinking Funds
             </h1>
-            <p className="text-xs text-slate-400">
-              Ring-fenced liquidity pools, multi-tier sinking funds, and deterministic autopilot allocations insulated from daily spending burn.
-            </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#080D16] border border-white/[0.08] text-xs font-mono text-slate-300">
-              <span>FY 2024-25</span>
-              <span className="text-[#05DF85] font-bold">Active ({goals.length})</span>
-            </div>
-
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(5,223,133,0.3)] transition-all"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>New Savings Goal</span>
+              <span>Create Savings Goal</span>
             </button>
           </div>
         </div>
 
-        {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* 3 KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL RING-FENCED EARMARKS</div>
-            <div className="text-2xl font-mono font-bold text-white">₹18,45,000<span className="text-sm text-slate-500 font-normal"> / ₹28.5L</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span className="text-[#05DF85]">+₹65,000 automated Nov</span>
-              <span className="text-slate-500">Target: ₹20,50,000</span>
+            <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL TARGET AMOUNT</div>
+            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalTargetPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              {goals.length} active savings targets
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="flex items-center justify-between text-[11px] font-mono uppercase text-[#05DF85] mb-1">
-              <span>EMERGENCY RUNWAY FORTRESS</span>
-              <Shield className="w-3.5 h-3.5 text-[#05DF85]" />
-            </div>
-            <div className="text-2xl font-mono font-bold text-[#05DF85]">₹6,00,000<span className="text-xs font-bold text-emerald-300/80 ml-2">100% FUNDED</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2">
-              Fortified 6.2 Months Fixed Burn in High-Yield Sweep
+            <div className="text-[11px] font-mono uppercase text-[#05DF85] mb-1">TOTAL AMOUNT SAVED</div>
+            <div className="text-2xl font-mono font-bold text-[#05DF85]">{formatCurrency(totalSavedPaise)}</div>
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              {overallPercent}% aggregate progress
             </div>
           </div>
 
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-cyan-400 mb-1">AUTOPILOT INFLOW VELOCITY</div>
-            <div className="text-2xl font-mono font-bold text-white">₹65,000<span className="text-base text-slate-400 font-normal"> / month</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
-              <span>6 Scheduled Auto-Debits</span>
-              <span className="text-cyan-400">Next: 05 Nov 2024</span>
+            <div className="text-[11px] font-mono uppercase text-cyan-400 mb-1">REMAINING TO SAVE</div>
+            <div className="text-2xl font-mono font-bold text-white">
+              {formatCurrency(Math.max(0, totalTargetPaise - totalSavedPaise))}
             </div>
-          </div>
-
-          <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08]">
-            <div className="text-[11px] font-mono uppercase text-purple-400 mb-1">WEIGHTED LIQUID YIELD</div>
-            <div className="text-2xl font-mono font-bold text-white">7.15%<span className="text-base text-slate-400 font-normal"> Blended APY</span></div>
-            <div className="text-[10px] font-mono text-slate-400 mt-2">
-              +₹10,995/mo compounding across Liquid & Arbitrage Funds
+            <div className="text-[10px] font-mono text-slate-500 mt-2">
+              Isolated from your disposable cash
             </div>
           </div>
         </div>
 
-        {/* Main Section: Goal Cards (8 cols) + Right Autopilot & Radar (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Goal Cards Stream (8 cols) */}
-          <div className="lg:col-span-8 space-y-4">
-            {goals.map((g) => (
-              <div
-                key={g.id}
-                className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] hover:border-white/[0.15] transition-all space-y-3"
-              >
-                {/* Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
-                      <span>{g.tier}</span>
-                      <span className="px-1.5 py-0.2 rounded bg-white/[0.05] text-slate-300 font-bold border border-white/[0.06]">
-                        {g.badge}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-white mt-0.5">{g.name}</h3>
-                  </div>
-
-                  <div className="text-right shrink-0 font-mono">
-                    <div className="text-xl font-bold text-white">
-                      ₹{g.current.toLocaleString('en-IN')}
-                      <span className="text-xs text-slate-400 font-normal"> / ₹{g.target.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="text-[11px] font-bold" style={{ color: g.color }}>
-                      {g.percent}% Funded
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-300 leading-relaxed">{g.desc}</p>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500 shadow-sm"
-                    style={{
-                      width: `${Math.min(g.percent, 100)}%`,
-                      backgroundColor: g.color
-                    }}
-                  />
-                </div>
-
-                {/* Footer Metadata */}
-                <div className="pt-2 border-t border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono text-slate-400 gap-2">
-                  <div>
-                    {g.vaultStatus && <span className="text-[#05DF85]">{g.vaultStatus}</span>}
-                    {g.autoSip && <span>Auto-SIP: <strong className="text-white">{g.autoSip}</strong></span>}
-                    {g.milestone && <span className="text-slate-300">{g.milestone}</span>}
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    {g.targetDate ? `Target: ${g.targetDate}` : g.yieldRate}
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Goals Grid */}
+        {loading ? (
+          <div className="p-16 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-3">
+            <div className="w-7 h-7 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-slate-400">Loading savings goals...</p>
           </div>
-
-          {/* Right Panels: Autopilot Intelligence, Vault Breakdown & Collision Radar (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Autopilot Intelligence Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#05DF85]" />
-                  <h3 className="text-xs font-bold text-white">Autopilot Intelligence</h3>
-                </div>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/10 text-[#05DF85]">
-                  ACTIVE RULE
-                </span>
-              </div>
-
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] text-xs text-slate-300 leading-relaxed">
-                <div className="font-bold text-white mb-1">Velocity Optimization Found</div>
-                With your current <strong className="text-[#05DF85] font-mono">₹1,18,320 safe cash surplus</strong>, reallocating ₹10,000/mo from discretionary dining completes <strong>Japan Cherry Blossom 45 days earlier</strong>.
-              </div>
-
-              <button
-                onClick={() => setRebalanceApplied(true)}
-                className="w-full py-2.5 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.25)]"
-              >
-                {rebalanceApplied ? 'Rebalance Active ✓' : 'Apply Recommended Rebalance (1-Click)'}
-              </button>
+        ) : goals.length === 0 ? (
+          /* Empty State */
+          <div className="p-12 rounded-2xl bg-[#080D16] border border-white/[0.08] text-center space-y-4 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#05DF85] flex items-center justify-center mx-auto">
+              <Target className="w-6 h-6" />
             </div>
-
-            {/* Vault Breakdown Card */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-white font-mono uppercase">Vault Breakdown</h3>
-                <span className="text-xs font-mono font-bold text-white">₹18.45L</span>
-              </div>
-
-              <div className="w-full h-2 rounded-full bg-slate-800 flex overflow-hidden">
-                <div className="bg-[#05DF85] h-full w-[42%]" title="Liquid 42%"></div>
-                <div className="bg-cyan-400 h-full w-[32%]" title="Sweeps 32%"></div>
-                <div className="bg-purple-400 h-full w-[18%]" title="Arbitrage 18%"></div>
-                <div className="bg-slate-400 h-full w-[8%]" title="Savings 8%"></div>
-              </div>
-
-              <div className="space-y-1.5 text-xs font-mono text-slate-300 pt-1">
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#05DF85]"></span>Liquid & Overnight Funds</span>
-                  <span className="text-white font-semibold">₹7,74,900 (6.8% APY)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-cyan-400"></span>High-Yield Bank Sweeps</span>
-                  <span className="text-white font-semibold">₹5,90,400 (7.25% APY)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-400"></span>Arbitrage Funds</span>
-                  <span className="text-white font-semibold">₹3,32,100 (7.15% APY)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400"></span>Dedicated Savings Buffer</span>
-                  <span className="text-white font-semibold">₹1,47,600 (4.0% APY)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Collision Radar (90D) */}
-            <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white font-mono">
-                  <Zap className="w-3.5 h-3.5 text-[#05DF85]" />
-                  <span>Collision Radar</span>
-                </div>
-                <span className="text-[10px] font-mono text-[#05DF85] font-bold">CLEAR 90D</span>
-              </div>
-
-              <p className="text-[11px] text-slate-400">
-                Milestone timeline mapped against scheduled inflows & credit card billing cycles.
+            <div>
+              <h3 className="text-base font-bold text-white">No Savings Goals Created Yet</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                Set target amounts for an emergency cushion, gadgets, or travel. FinPilot earmarks these funds from your tracked cash so you don&apos;t accidentally spend them.
               </p>
-
-              <div className="space-y-2.5 pt-1 text-xs font-mono">
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04]">
-                  <div className="flex justify-between text-[#05DF85] font-bold">
-                    <span>01 NOV • SALARY INFLOW</span>
-                    <span>+₹2,40,000</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Primary payroll clears into HDFC account.</div>
-                </div>
-
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04]">
-                  <div className="flex justify-between text-cyan-400 font-bold">
-                    <span>05 NOV • AUTOPILOT SINKS</span>
-                    <span>-₹65,000</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Automated debit splits cleanly across active goals.</div>
-                </div>
-
-                <div className="p-2.5 rounded-lg bg-[#0D1422] border border-white/[0.04]">
-                  <div className="flex justify-between text-white font-bold">
-                    <span>20 DEC • MACBOOK GOAL</span>
-                    <span>₹2,50,000 Ready</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Goal fully funded ahead of winter hardware cycle.</div>
-                </div>
-              </div>
             </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs transition-all shadow-[0_0_15px_rgba(5,223,133,0.3)]"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Create First Goal</span>
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.isArray(goals) && goals.map((g) => {
+              if (!g) return null;
+              const targetPaise = g.targetAmountPaise || 0;
+              const savedPaise = g.currentAmountPaise || 0;
+              const percent = targetPaise > 0 ? Math.min(100, Math.round((savedPaise / targetPaise) * 100)) : 0;
+              const isComplete = percent >= 100;
+              const categoryStr = typeof g.category === 'string' ? g.category.replace(/_/g, ' ') : 'General Goal';
+              const priorityStr = g.priority || 'medium';
+
+              return (
+                <div
+                  key={g._id || Math.random()}
+                  className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.08] space-y-4 flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{g.name || 'Savings Goal'}</h4>
+                        <div className="text-[10px] font-mono text-slate-400 uppercase">
+                          {categoryStr} • {priorityStr}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${isComplete ? 'bg-emerald-500/10 text-[#05DF85] border-emerald-500/20' : 'bg-white/[0.05] text-slate-300 border-white/[0.08]'}`}>
+                          {isComplete ? 'COMPLETED' : `${percent}%`}
+                        </span>
+
+                        <button
+                          onClick={() => handleDeleteGoal(g._id, g.name)}
+                          className="p-1 text-slate-500 hover:text-rose-400"
+                          title="Delete goal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-mono">
+                        <span className="text-slate-400">Saved: <strong className="text-white">{formatCurrency(savedPaise)}</strong></span>
+                        <span className="text-slate-400">Target: <strong className="text-white">{formatCurrency(targetPaise)}</strong></span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#05DF85] rounded-full transition-all"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
+                    <div className="text-[10px] font-mono text-slate-500">
+                      {g.targetDate ? `Target: ${new Date(g.targetDate).toLocaleDateString()}` : 'No target date'}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedGoal(g);
+                        setShowContributeModal(true);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-[#05DF85] border border-emerald-500/20 text-xs font-bold transition-all"
+                    >
+                      + Add Funds
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Add Goal Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#080D16] border border-white/[0.1] rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#05DF85]" />
-                <span>Create New Savings Target</span>
+                <span>Create Savings Goal</span>
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setShowAddModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            <form onSubmit={handleCreateGoal} className="space-y-3 font-sans text-xs">
+            <form onSubmit={handleCreateGoal} className="space-y-4 text-xs font-sans">
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">GOAL NAME</label>
+                <label className="block text-slate-300 font-medium mb-1">Goal Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Electric Vehicle Down Payment"
-                  value={newGoal.name}
-                  onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
+                  placeholder="e.g. 6-Month Emergency Fund, Laptop Sinking Fund"
+                  value={goalForm.name}
+                  onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs focus:outline-none focus:border-[#05DF85]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">TARGET AMOUNT (₹ INR)</label>
+                <label className="block text-slate-300 font-medium mb-1">Target Amount (₹ INR) *</label>
                 <input
                   type="number"
                   step="0.01"
+                  min="1"
                   required
-                  placeholder="e.g. 500000"
-                  value={newGoal.target}
-                  onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
+                  placeholder="e.g. 100000.00"
+                  value={goalForm.targetAmount}
+                  onChange={(e) => setGoalForm({ ...goalForm, targetAmount: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-sm focus:outline-none focus:border-[#05DF85]"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">TARGET COMPLETION DATE</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Aug 2025"
-                  value={newGoal.targetDate}
-                  onChange={(e) => setNewGoal({ ...newGoal, targetDate: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Category</label>
+                  <select
+                    value={goalForm.category}
+                    onChange={(e) => setGoalForm({ ...goalForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  >
+                    <option value="emergency_fund">Emergency Fund</option>
+                    <option value="vacation">Vacation / Travel</option>
+                    <option value="gadget">Tech & Gadgets</option>
+                    <option value="vehicle">Vehicle</option>
+                    <option value="home">Home / Property</option>
+                    <option value="other">Other Goal</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Target Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={goalForm.targetDate}
+                    onChange={(e) => setGoalForm({ ...goalForm, targetDate: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs font-mono"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1 font-mono">MONTHLY AUTO-ALLOCATION (OPTIONAL)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 15000"
-                  value={newGoal.autoSip}
-                  onChange={(e) => setNewGoal({ ...newGoal, autoSip: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono focus:outline-none focus:border-[#05DF85]"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
                 >
-                  Save Target
+                  {submitting ? 'Creating...' : 'Save Goal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Contribute to Goal Modal */}
+      {showContributeModal && selectedGoal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md rounded-2xl bg-[#080D16] border border-white/[0.1] p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-base font-bold text-white">Add Funds: {selectedGoal.name}</h3>
+              <button onClick={() => setShowContributeModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <form onSubmit={handleContribute} className="space-y-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Contribution Amount (₹ INR) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  required
+                  placeholder="e.g. 5000.00"
+                  value={contributeAmount}
+                  onChange={(e) => setContributeAmount(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono text-sm focus:outline-none focus:border-[#05DF85]"
+                />
+              </div>
+
+              {accounts.length > 0 && (
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Deduct from Account</label>
+                  <select
+                    value={contributeAccountId}
+                    onChange={(e) => setContributeAccountId(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white text-xs"
+                  >
+                    {accounts.map((a) => (
+                      <option key={a._id} value={a._id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShowContributeModal(false)}
+                  className="px-4 py-2 rounded-lg bg-[#0D1422] text-slate-300 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#05DF85] text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
+                >
+                  {submitting ? 'Recording...' : 'Deposit Funds'}
                 </button>
               </div>
             </form>

@@ -3,12 +3,13 @@ import mongoose from 'mongoose';
 import { Transaction } from '../models/Transaction.js';
 import { RecurringTransaction } from '../models/RecurringTransaction.js';
 import { Account } from '../models/Account.js';
+import { processDueRecurringTransactions } from '../services/recurringEngine.js';
 
 export const createTransactionSchema = z.object({
   body: z.object({
     type: z.enum(['income', 'expense', 'transfer', 'goal_contribution', 'loan_payment', 'investment_buy']),
     amountPaise: z.number().int().min(1, 'Amount must be at least 1 paisa'),
-    accountId: z.string().min(1, 'Account is required'),
+    accountId: z.string().optional().nullable(),
     toAccountId: z.string().optional().nullable(),
     category: z.string().min(1, 'Category is required').max(100),
     date: z.string().datetime().optional().default(() => new Date().toISOString()),
@@ -18,11 +19,11 @@ export const createTransactionSchema = z.object({
     metadata: z.record(z.any()).optional().default({})
   }).refine((data) => {
     if (data.type === 'transfer') {
-      return data.toAccountId && data.toAccountId !== data.accountId;
+      return data.accountId && data.toAccountId && data.toAccountId !== data.accountId;
     }
     return true;
   }, {
-    message: 'Destination account is required and must be different from source account for transfers',
+    message: 'Source and destination accounts are required and must be different for transfers',
     path: ['toAccountId']
   })
 });
@@ -31,7 +32,7 @@ export const updateTransactionSchema = z.object({
   body: z.object({
     type: z.enum(['income', 'expense', 'transfer', 'goal_contribution', 'loan_payment', 'investment_buy']).optional(),
     amountPaise: z.number().int().min(1).optional(),
-    accountId: z.string().optional(),
+    accountId: z.string().optional().nullable(),
     toAccountId: z.string().optional().nullable(),
     category: z.string().min(1).max(100).optional(),
     date: z.string().datetime().optional(),
@@ -43,14 +44,29 @@ export const updateTransactionSchema = z.object({
 export const createRecurringSchema = z.object({
   body: z.object({
     type: z.enum(['income', 'expense']),
-    amountPaise: z.number().int().min(1),
-    accountId: z.string().min(1),
-    category: z.string().min(1),
+    amountPaise: z.number().int().min(1, 'Amount must be at least 1 paisa'),
+    accountId: z.string().optional().nullable(),
+    category: z.string().min(1, 'Category is required'),
     description: z.string().optional().default(''),
     frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).default('monthly'),
     startDate: z.string().datetime().optional().default(() => new Date().toISOString()),
     nextDueDate: z.string().datetime(),
     endDate: z.string().datetime().optional().nullable()
+  })
+});
+
+export const updateRecurringSchema = z.object({
+  body: z.object({
+    type: z.enum(['income', 'expense']).optional(),
+    amountPaise: z.number().int().min(1).optional(),
+    accountId: z.string().optional().nullable(),
+    category: z.string().min(1).optional(),
+    description: z.string().optional(),
+    frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).optional(),
+    startDate: z.string().datetime().optional(),
+    nextDueDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional().nullable(),
+    isActive: z.boolean().optional()
   })
 });
 
@@ -135,14 +151,21 @@ export async function getTransactions(req, res, next) {
 
 export async function createTransaction(req, res, next) {
   try {
-    const { accountId, toAccountId } = req.body;
+    const { accountId, toAccountId, type } = req.body;
 
-    // Verify user owns the source account
-    const sourceAccount = await Account.findOne({ _id: accountId, userId: req.userId });
-    if (!sourceAccount) {
+    // If source account provided, verify user owns it
+    if (accountId) {
+      const sourceAccount = await Account.findOne({ _id: accountId, userId: req.userId });
+      if (!sourceAccount) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ACCOUNT', message: 'Source account not found or access denied' }
+        });
+      }
+    } else if (type === 'transfer') {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_ACCOUNT', message: 'Source account not found or access denied' }
+        error: { code: 'INVALID_ACCOUNT', message: 'Source account is required for transfers' }
       });
     }
 
@@ -159,6 +182,8 @@ export async function createTransaction(req, res, next) {
 
     const transaction = await Transaction.create({
       ...req.body,
+      accountId: accountId || null,
+      toAccountId: toAccountId || null,
       userId: req.userId
     });
 
@@ -202,6 +227,16 @@ export async function getTransactionById(req, res, next) {
 
 export async function updateTransaction(req, res, next) {
   try {
+    if (req.body.accountId) {
+      const account = await Account.findOne({ _id: req.body.accountId, userId: req.userId });
+      if (!account) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ACCOUNT', message: 'Account not found or access denied' }
+        });
+      }
+    }
+
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
       { $set: req.body },
@@ -263,15 +298,92 @@ export async function getRecurringTransactions(req, res, next) {
 
 export async function createRecurringTransaction(req, res, next) {
   try {
+    const { accountId } = req.body;
+
+    if (accountId) {
+      const account = await Account.findOne({ _id: accountId, userId: req.userId });
+      if (!account) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ACCOUNT', message: 'Account not found or access denied' }
+        });
+      }
+    }
+
     const recurring = await RecurringTransaction.create({
       ...req.body,
+      accountId: accountId || null,
       userId: req.userId
     });
 
+    const populated = await RecurringTransaction.findById(recurring._id)
+      .populate('accountId', 'name type color icon');
+
     return res.status(201).json({
       success: true,
-      message: 'Recurring transaction rule created',
+      message: 'Recurring schedule created successfully',
+      data: { recurring: populated }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateRecurringTransaction(req, res, next) {
+  try {
+    if (req.body.accountId) {
+      const account = await Account.findOne({ _id: req.body.accountId, userId: req.userId });
+      if (!account) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ACCOUNT', message: 'Account not found or access denied' }
+        });
+      }
+    }
+
+    const recurring = await RecurringTransaction.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      { $set: req.body },
+      { new: true }
+    ).populate('accountId', 'name type color icon');
+
+    if (!recurring) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Recurring schedule not found' }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Recurring schedule updated successfully',
       data: { recurring }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function toggleRecurringTransaction(req, res, next) {
+  try {
+    const recurring = await RecurringTransaction.findOne({ _id: req.params.id, userId: req.userId });
+    if (!recurring) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Recurring schedule not found' }
+      });
+    }
+
+    recurring.isActive = !recurring.isActive;
+    await recurring.save();
+
+    const populated = await RecurringTransaction.findById(recurring._id)
+      .populate('accountId', 'name type color icon');
+
+    return res.status(200).json({
+      success: true,
+      message: recurring.isActive ? 'Recurring schedule resumed' : 'Recurring schedule paused',
+      data: { recurring: populated }
     });
   } catch (err) {
     next(err);
@@ -284,13 +396,26 @@ export async function deleteRecurringTransaction(req, res, next) {
     if (result.deletedCount === 0) {
       return res.status(404).json({
         success: false,
-        error: { code: 'NOT_FOUND', message: 'Recurring rule not found' }
+        error: { code: 'NOT_FOUND', message: 'Recurring schedule not found' }
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Recurring rule deleted'
+      message: 'Recurring schedule deleted'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function processDueRecurringEndpoint(req, res, next) {
+  try {
+    const result = await processDueRecurringTransactions({ userId: req.userId });
+    return res.status(200).json({
+      success: true,
+      message: `Processed ${result.processedCount} due recurring transaction(s)`,
+      data: result
     });
   } catch (err) {
     next(err);
