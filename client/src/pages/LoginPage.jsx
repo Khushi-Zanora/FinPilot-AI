@@ -8,19 +8,16 @@ import {
   Mail,
   Eye,
   EyeOff,
-  CheckCircle2,
   ArrowRight,
-  Sparkles,
-  Key,
-  Globe,
-  Fingerprint,
   TrendingUp,
-  Cpu
+  Sparkles,
+  ShieldCheck,
+  Calculator
 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('arjun@strataflow.io');
-  const [password, setPassword] = useState('FinPilot!Secure2025');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -42,8 +39,7 @@ export default function LoginPage() {
         navigate('/workspace/dashboard');
       }
     } catch (err) {
-      // Fallback transition for demo preview
-      navigate('/workspace/dashboard');
+      setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -51,7 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#05080E] text-slate-100 flex flex-col justify-between font-sans selection:bg-[#05DF85] selection:text-slate-950">
-      {/* Top Protocol Header */}
+      {/* Top Header */}
       <header className="h-14 border-b border-white/[0.08] bg-[#05080E]/90 backdrop-blur-md px-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#05DF85] shadow-[0_0_15px_rgba(5,223,133,0.15)]">
@@ -61,77 +57,38 @@ export default function LoginPage() {
         </Link>
 
         <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-mono text-slate-300">
-          <Shield className="w-3.5 h-3.5 text-[#05DF85]" />
-          <span>256-BIT SSL ENCRYPTED • SOC-2 COMPLIANT</span>
+          <ShieldCheck className="w-3.5 h-3.5 text-[#05DF85]" />
+          <span>SECURE TLS ENCRYPTED • PRIVATE FINANCIAL VAULT</span>
         </div>
 
         <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#080D16] border border-white/[0.08] text-slate-300 font-mono text-[11px]">
-            <Globe className="w-3.5 h-3.5 text-slate-500" />
-            <span>EN / USD</span>
-          </div>
-
           <Link to="/" className="text-slate-400 hover:text-white transition-colors">
             Help & Docs
           </Link>
-
           <Link
-            to="/login"
+            to="/register"
             className="px-3.5 py-1.5 rounded-lg bg-[#05DF85] text-slate-950 font-bold text-xs shadow-sm hover:bg-[#04C976] transition-all"
           >
-            Sign In
+            Sign Up Free
           </Link>
         </div>
       </header>
 
-      {/* Main Two-Column Sign In Container */}
-      <main className="max-w-7xl mx-auto w-full px-6 py-8 flex-1 flex items-center">
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex-1 flex items-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-start">
           {/* Left Column: Form (7 cols) */}
           <div className="lg:col-span-7 p-6 sm:p-8 rounded-2xl bg-[#080D16] border border-white/[0.08] shadow-2xl space-y-5">
             <div>
               <div className="text-[11px] font-mono text-[#05DF85] flex items-center gap-1.5 mb-2 font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85] animate-pulse"></span>
-                <span>PROTOCOL GATE // SECURE AUTH</span>
+                <span>SECURE SIGN IN</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                 Welcome back to <span className="text-[#05DF85]">FinPilot</span>
               </h1>
               <p className="text-xs text-slate-400 mt-1">
-                Enter your credentials to access your financial telemetry cockpit and autonomous treasury reserves.
+                Sign in to view your real-time cash flow, goal progress, and deterministic financial insights.
               </p>
-            </div>
-
-            {/* Social & Passkey SSO Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                className="py-2.5 px-4 rounded-xl bg-[#0D1422] hover:bg-[#121B2B] border border-white/[0.08] text-xs font-semibold text-slate-200 flex items-center justify-center gap-2.5 transition-all"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
-              <button
-                type="button"
-                className="py-2.5 px-4 rounded-xl bg-[#0D1422] hover:bg-[#121B2B] border border-white/[0.08] text-xs font-semibold text-slate-200 flex items-center justify-center gap-2.5 transition-all"
-              >
-                <Fingerprint className="w-4 h-4 text-cyan-400" />
-                <span>Hardware / Passkey</span>
-              </button>
-            </div>
-
-            {/* Separator */}
-            <div className="relative flex items-center justify-center my-3">
-              <div className="border-t border-white/[0.08] w-full"></div>
-              <span className="bg-[#080D16] px-3 text-[10px] font-mono uppercase tracking-wider text-slate-500 absolute">
-                OR CONTINUE WITH EMAIL
-              </span>
             </div>
 
             {error && (
@@ -143,12 +100,7 @@ export default function LoginPage() {
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4 text-xs font-sans">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-300 font-medium">Work or Personal Email</label>
-                  <span className="text-[10px] font-mono text-cyan-400 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Corporate SSO Ready
-                  </span>
-                </div>
+                <label className="block text-slate-300 font-medium mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                   <input
@@ -156,20 +108,17 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="arjun@strataflow.io"
+                    placeholder="e.g. arjun@example.com"
                     className="w-full pl-9 pr-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[#05DF85]"
                   />
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 mt-1">
-                  Institutional clearing address configured for hardware token dispatch.
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-300 font-medium">Master Password</label>
+                  <label className="text-slate-300 font-medium">Password</label>
                   <Link to="/forgot-password" className="text-[11px] font-mono text-slate-400 hover:text-[#05DF85]">
-                    Forgot master key?
+                    Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
@@ -179,7 +128,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••••••"
+                    placeholder="Enter your password"
                     className="w-full pl-9 pr-9 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white font-mono placeholder-slate-500 focus:outline-none focus:border-[#05DF85]"
                   />
                   <button
@@ -192,7 +141,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Remember device & Biometric Fast-Pass */}
+              {/* Remember device checkbox */}
               <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300">
                   <input
@@ -201,13 +150,8 @@ export default function LoginPage() {
                     onChange={(e) => setRememberDevice(e.target.checked)}
                     className="rounded bg-[#0D1422] border-white/[0.2] text-[#05DF85] focus:ring-0"
                   />
-                  <span>Remember this device for 30 days</span>
+                  <span>Remember my session</span>
                 </label>
-
-                <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
-                  <Fingerprint className="w-3 h-3 text-[#05DF85]" />
-                  <span>Biometric Fast-Pass enabled</span>
-                </span>
               </div>
 
               {/* Submit CTA */}
@@ -216,50 +160,44 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full py-3 px-4 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(5,223,133,0.3)] disabled:opacity-50 mt-3"
               >
-                <span>{loading ? 'Authenticating Session...' : 'Sign In to FinPilot'}</span>
+                <span>{loading ? 'Authenticating...' : 'Sign In to FinPilot'}</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
 
               <div className="text-[10px] font-mono text-slate-500 text-center pt-2 flex items-center justify-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-[#05DF85]" />
-                <span>Protected by AES-256 vault encryption & WebAuthn FIPS 140-2 Level 3</span>
+                <span>Protected by bcrypt salted hashing and secure encrypted session cookies</span>
               </div>
             </form>
 
             <div className="pt-3 border-t border-white/[0.06] text-center text-xs text-slate-400">
-              Don&apos;t have an enterprise seat?{' '}
+              Don&apos;t have an account?{' '}
               <Link to="/register" className="text-[#05DF85] font-semibold hover:underline">
-                Create an account
+                Create a free account →
               </Link>
             </div>
           </div>
 
-          {/* Right Column: Live Telemetry Feed & Testimonial (5 cols) */}
+          {/* Right Column: Key Benefits Overview (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            {/* Live Telemetry Feed Card */}
-            <div className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.08] relative overflow-hidden space-y-4">
+            {/* Real-time Cash Flow Summary Card */}
+            <div className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.08] relative space-y-3">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <div className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85] animate-pulse"></span>
-                  <span className="font-bold">LIVE TELEMETRY FEED</span>
-                </div>
-                <span className="text-slate-500">Arjun&apos;s Ledger synced 2m ago</span>
+                <span className="text-slate-300 font-bold">NET SAFE TO SPEND</span>
+                <span className="text-[#05DF85] font-semibold flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Real-time
+                </span>
               </div>
 
-              {/* Net Safe Cash */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-mono uppercase text-slate-400">NET SAFE CASH (INSTANT LIQUIDITY)</div>
-                <div className="flex items-baseline justify-between">
-                  <div className="text-2xl sm:text-3xl font-mono font-bold text-white">₹1,18,320</div>
-                  <div className="text-[10px] font-mono text-[#05DF85] flex items-center gap-1 font-bold">
-                    <TrendingUp className="w-3 h-3" /> +14.2% MoM
-                  </div>
+              <div>
+                <div className="text-2xl font-mono font-bold text-white">₹1,18,320<span className="text-base text-slate-400 font-normal">.00</span></div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  True disposable cash after isolating ₹2,46,000 in emergency cushions and ₹30,678 in upcoming 30-day bills.
                 </div>
-                <div className="text-[10px] font-mono text-slate-500">T+0 Cleared</div>
               </div>
 
-              {/* Sparkline */}
-              <div className="h-10">
+              {/* Sparkline wave */}
+              <div className="h-10 pt-1">
                 <svg className="w-full h-8" viewBox="0 0 300 40" fill="none">
                   <path
                     d="M0 30 Q 50 28, 100 25 T 200 15 T 300 5"
@@ -269,80 +207,43 @@ export default function LoginPage() {
                   />
                 </svg>
               </div>
+            </div>
 
-              {/* AI Pilot Sweep Active */}
-              <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-[#05DF85]">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">AI Pilot Sweep Active</div>
-                    <div className="text-[10px] text-[#05DF85] font-mono font-semibold">₹3,400 monthly savings identified</div>
-                  </div>
-                </div>
-                <CheckCircle2 className="w-4 h-4 text-[#05DF85]" />
+            {/* Benefit 1 */}
+            <div className="p-4 rounded-xl bg-[#080D16] border border-white/[0.08] flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-[#05DF85] flex items-center justify-center shrink-0">
+                <Calculator className="w-3.5 h-3.5" />
               </div>
-
-              {/* Treasury Spread */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-slate-400 uppercase">TREASURY SPREAD</span>
-                  <span className="text-[#05DF85] font-bold">99.8% Optimized</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-800 flex overflow-hidden">
-                  <div className="bg-[#05DF85] h-full w-[58%]" title="T-Bills 58%"></div>
-                  <div className="bg-cyan-400 h-full w-[27%]" title="Repo 27%"></div>
-                  <div className="bg-indigo-400 h-full w-[15%]" title="Delta 15%"></div>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-0.5">
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span> T-Bills 58%</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Repo 27%</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Delta 15%</span>
+              <div>
+                <div className="text-xs font-bold text-white">Integer-Precision Ledger</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Tracks bank accounts, credit cards, and cash down to the exact paisa without rounding errors.
                 </div>
               </div>
             </div>
 
-            {/* Testimonial Quote Card */}
-            <div className="p-5 rounded-2xl bg-[#080D16] border border-white/[0.08] relative space-y-3">
-              <div className="text-2xl font-serif text-slate-600 font-bold leading-none select-none">“</div>
-              <p className="text-xs text-slate-300 italic leading-relaxed">
-                “FinPilot replaced our fragmented multi-bank telemetry with deterministic math and microsecond liquidity visibility. It&apos;s unmatched for high-growth operations.”
-              </p>
-
-              <div className="flex items-center gap-2.5 pt-2 border-t border-white/[0.04]">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-800 flex items-center justify-center font-bold text-slate-950 text-xs">
-                  VS
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Vikramaditya Shah</div>
-                  <div className="text-[10px] font-mono text-slate-400">VP Engineering, StrataFlow Capital</div>
+            {/* Benefit 2 */}
+            <div className="p-4 rounded-xl bg-[#080D16] border border-white/[0.08] flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">Deterministic Financial Advisor</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Calculates exact purchase affordability, savings timelines, and loan prepayment impact.
                 </div>
               </div>
-            </div>
-
-            {/* Zero-Knowledge Vault Badge */}
-            <div className="p-3 rounded-xl bg-[#080D16] border border-white/[0.08] flex items-center justify-between text-[10px] font-mono text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-[#05DF85]" />
-                <span className="text-slate-200 font-semibold">Zero-Knowledge Vault</span>
-              </div>
-              <span>PCI-DSS LEVEL 1 • ISO-27001</span>
             </div>
           </div>
         </div>
       </main>
 
       {/* Global Footer */}
-      <footer className="h-12 border-t border-white/[0.06] px-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500">
-        <div>© 2025 FinPilot Technologies Inc. All institutional protocols reserved.</div>
+      <footer className="h-12 border-t border-white/[0.06] px-6 flex items-center justify-between text-[11px] text-slate-500">
+        <div>© 2025 FinPilot. All rights reserved.</div>
         <div className="flex items-center gap-4">
-          <Link to="/" className="hover:text-slate-300">Security Whitepaper</Link>
-          <Link to="/" className="hover:text-slate-300">Disclosures</Link>
-          <div className="flex items-center gap-1.5 text-slate-400 font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-            <span>Systems Operational</span>
-          </div>
+          <Link to="/" className="hover:text-slate-300">Privacy Policy</Link>
+          <Link to="/" className="hover:text-slate-300">Terms of Service</Link>
         </div>
       </footer>
     </div>

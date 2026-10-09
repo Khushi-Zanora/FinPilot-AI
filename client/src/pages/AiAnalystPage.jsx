@@ -9,14 +9,10 @@ import {
   Pin,
   RefreshCw,
   Download,
-  Paperclip,
   Landmark,
-  ArrowUpRight,
-  ShieldCheck,
   CheckCircle2,
   Send,
   Database,
-  SlidersHorizontal,
   ChevronDown
 } from 'lucide-react';
 
@@ -33,7 +29,7 @@ export default function AiAnalystPage() {
       id: 'pin-1',
       title: 'Laptop ₹75k Affordability',
       date: 'Oct 24',
-      subtitle: '3-mo budget strain & SIP delta'
+      subtitle: '3-mo budget strain & SIP impact'
     },
     {
       id: 'pin-2',
@@ -43,34 +39,34 @@ export default function AiAnalystPage() {
     },
     {
       id: 'pin-3',
-      title: 'Emergency vs Prepaying Loan',
+      title: 'Emergency Cushion vs Loan Prepayment',
       date: 'Oct 09',
-      subtitle: '8.65% interest arbitrage matrix'
+      subtitle: 'Interest savings vs buffer liquidity'
     }
   ];
 
   const recents = {
     today: [
-      { id: 'rec-1', title: 'October Outflow Diagnostic', desc: 'Discretionary food & leisure del...' },
-      { id: 'rec-2', title: 'Mutual Fund SIP Rebalance', desc: 'Small cap trim to Nifty 50 Index' }
+      { id: 'rec-1', title: 'Monthly Outflow Diagnostic', desc: 'Discretionary vs essential ratio' },
+      { id: 'rec-2', title: 'Mutual Fund SIP Review', desc: 'Monthly allocation consistency' }
     ],
     yesterday: [
-      { id: 'rec-3', title: 'Term Insurance vs Endowment', desc: '₹2Cr cover premium IRR analysis' }
+      { id: 'rec-3', title: 'Term Insurance Coverage Analysis', desc: 'Family income replacement adequacy' }
     ]
   };
 
   const planDetails = {
     planA: {
       title: 'Plan A: Direct 3-Month Cashflow Allocation',
-      details: 'Allocate ₹25,000/mo from discretionary surplus into a dedicated liquid target. No loan interest or credit score impact. Emergency reserve remains 100% intact.'
+      details: 'Allocate ₹25,000/mo from discretionary surplus into a dedicated savings target. Zero loan interest or debt obligations. Emergency cushion remains 100% untouched.'
     },
     planB: {
       title: 'Plan B: 6-Month No-Cost EMI with Card Cashback',
-      details: 'Split into ₹12,500/mo over 6 months on HDFC Regalia. Retains an extra ₹12,500/mo in savings yielding 7.1% in arbitrage liquid funds. ₹1,500 effective cashback.'
+      details: 'Split into ₹12,500/mo over 6 months on credit card with verified no-cost financing. Leaves an extra ₹12,500/mo in liquid savings earning standard bank interest.'
     },
     planC: {
-      title: 'Plan C: Offset with Upcoming Diwali Bonus',
-      details: 'Maintain current SIPs without any discretionary reduction. Pay 100% upfront using projected Nov 10 performance incentive.'
+      title: 'Plan C: Offset with Upcoming Performance Incentive',
+      details: 'Maintain current monthly discretionary spending and SIPs uninterrupted. Fund the purchase upfront when scheduled year-end incentive is credited.'
     }
   };
 
@@ -117,7 +113,7 @@ export default function AiAnalystPage() {
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          recommendation: 'Deterministic analysis calculated using your active ledger. Free Cash Flow accommodates this requirement.',
+          recommendation: 'Deterministic analysis calculated using your active ledger. Free Cash Flow accommodates this requirement with zero impact on emergency reserves.',
           score: 90,
           metrics: {
             freeCashFlow: '₹42,500/mo',
@@ -133,12 +129,12 @@ export default function AiAnalystPage() {
   };
 
   const handleExportBrief = () => {
-    const briefText = `FINPILOT FINANCIAL COPILOT V2.4 - EXECUTIVE BRIEF\nDate: ${new Date().toLocaleDateString()}\nUser: ${user?.name || 'Arjun Sharma'}\nAffordability Diagnosis: High (94/100)\nFree Cash Flow: ₹42,500/mo\nCommitted Mandates: ₹88,450/mo\nRequired Target: ₹25,000/mo\nEmergency Buffer Delta: ₹0 Impact`;
+    const briefText = `FINPILOT FINANCIAL ADVISOR - EXECUTIVE BRIEF\nDate: ${new Date().toLocaleDateString()}\nUser: ${user?.name || 'Arjun Sharma'}\nAffordability Diagnosis: High (94/100)\nFree Cash Flow: ₹42,500/mo\nCommitted Mandates: ₹88,450/mo\nRequired Target: ₹25,000/mo\nEmergency Buffer Delta: ₹0 Impact`;
     const blob = new Blob([briefText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `FinPilot_Copilot_Brief_${Date.now()}.txt`;
+    a.download = `FinPilot_Financial_Brief_${Date.now()}.txt`;
     a.click();
   };
 
@@ -166,12 +162,12 @@ export default function AiAnalystPage() {
               <span className="text-[10px] font-mono opacity-75 font-semibold">⌘N</span>
             </button>
 
-            {/* Pro Quota Meter */}
+            {/* Quota Meter */}
             <div className="p-3 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-mono">
                 <span className="text-[#05DF85] font-semibold flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-                  PRO QUOTA
+                  SIMULATION QUOTA
                 </span>
                 <span className="text-white font-bold">142 / 200</span>
               </div>
@@ -179,7 +175,7 @@ export default function AiAnalystPage() {
                 <div className="bg-[#05DF85] h-full rounded-full w-[71%]" />
               </div>
               <div className="text-[10px] font-mono text-slate-500 pt-0.5">
-                58 high-depth simulations remaining
+                58 simulations remaining this month
               </div>
             </div>
 
@@ -212,7 +208,7 @@ export default function AiAnalystPage() {
               </div>
             </div>
 
-            {/* Recents: Today & Yesterday */}
+            {/* Recents */}
             <div className="space-y-3">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold px-1 mb-1">
@@ -252,30 +248,30 @@ export default function AiAnalystPage() {
             </div>
           </div>
 
-          {/* Active Ledger Feed Widget */}
+          {/* Connected Accounts Card */}
           <div className="p-3 rounded-xl bg-[#0D1422] border border-white/[0.06] space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-semibold text-white">
               <Database className="w-3.5 h-3.5 text-[#05DF85]" />
-              <span>Active Ledger Feed</span>
+              <span>Tracked Accounts</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed font-mono">
-              HDFC Salary Acc, ICICI Credit Card, Zerodha Kite Portfolio, Axis Home Loan
+              HDFC Regalia, ICICI Salary, Zerodha Portfolio, Axis Home Loan
             </p>
             <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#05DF85] pt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-              <span>Real-time verified</span>
+              <span>Ledger context active</span>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Main Chat & Copilot Diagnostic Canvas */}
+        {/* Right Column: Main Chat & Diagnostic Canvas */}
         <div className="flex-1 flex flex-col justify-between bg-[#05080E] overflow-hidden">
           {/* Top Sub-Header */}
           <div className="h-12 px-6 border-b border-white/[0.08] bg-[#080D16]/50 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-mono">
               <span className="w-2 h-2 rounded-full bg-[#05DF85]"></span>
-              <span className="text-white font-bold">Financial Copilot v2.4</span>
-              <span className="text-slate-500">Connected to {user?.name || 'Arjun'}&apos;s Ledger</span>
+              <span className="text-white font-bold">AI Financial Analyst</span>
+              <span className="text-slate-500">• Connected to Ledger</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -287,12 +283,10 @@ export default function AiAnalystPage() {
                 <span>Export Brief</span>
               </button>
 
-              <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05]">
-                <Pin className="w-3.5 h-3.5" />
-              </button>
               <button
                 onClick={() => setMessages([])}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05]"
+                title="Reset Conversation"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
@@ -321,7 +315,7 @@ export default function AiAnalystPage() {
                 <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-[#05DF85] flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
-                <span>FinPilot Diagnosis</span>
+                <span>FinPilot Affordability Diagnosis</span>
                 <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20">
                   Affordability: High (94/100)
                 </span>
@@ -336,7 +330,7 @@ export default function AiAnalystPage() {
                   <div>
                     <h4 className="text-sm font-bold text-white">Executive Recommendation</h4>
                     <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                      Yes, you can comfortably execute the <strong className="text-[#05DF85] font-mono">₹75,000</strong> purchase by <strong className="text-white">December 31, 2024</strong>. Your monthly free cash flow allows this without disrupting your emergency reserves, on the single condition that discretionary dining and shopping stay within <strong className="text-white font-mono">₹18,000/month</strong>.
+                      Yes, you can comfortably execute the <strong className="text-[#05DF85] font-mono">₹75,000</strong> purchase over <strong className="text-white">3 months</strong>. Your monthly free cash flow allows this without disrupting your emergency reserves, on the single condition that discretionary dining and entertainment stay within <strong className="text-white font-mono">₹18,000/month</strong>.
                     </p>
                   </div>
                 </div>
@@ -358,7 +352,7 @@ export default function AiAnalystPage() {
                   <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06]">
                     <div className="text-[10px] font-mono uppercase text-slate-400">REQUIRED ALLOCATION</div>
                     <div className="text-lg font-mono font-bold text-[#05DF85] mt-1">₹25,000<span className="text-xs font-normal text-slate-400">/mo</span></div>
-                    <div className="text-[9px] font-mono text-slate-500 mt-0.5">3 months = exactly ₹75,000 target</div>
+                    <div className="text-[9px] font-mono text-slate-500 mt-0.5">3 months = ₹75,000 total target</div>
                   </div>
 
                   <div className="p-3 rounded-lg bg-[#0D1422] border border-white/[0.06]">
@@ -446,7 +440,7 @@ export default function AiAnalystPage() {
             {loading && (
               <div className="p-4 rounded-xl bg-[#080D16] border border-white/[0.08] flex items-center gap-3 text-xs font-mono text-slate-400">
                 <div className="w-4 h-4 border-2 border-[#05DF85] border-t-transparent rounded-full animate-spin"></div>
-                <span>Executing deterministic multi-asset simulation...</span>
+                <span>Analyzing cash flow & ledger balances...</span>
               </div>
             )}
 
@@ -465,10 +459,10 @@ export default function AiAnalystPage() {
                 Summarize my finances this month
               </button>
               <button
-                onClick={() => handleSend('Where can I invest my ₹75,000 bonus?')}
+                onClick={() => handleSend('How can I save ₹10,000 more every month?')}
                 className="px-2.5 py-1 rounded-md bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.06] text-[11px] shrink-0 transition-all"
               >
-                Where can I invest my ₹75,000 bonus?
+                How can I save ₹10,000 more every month?
               </button>
             </div>
 
@@ -490,32 +484,15 @@ export default function AiAnalystPage() {
                     handleSend();
                   }
                 }}
-                placeholder="Ask FinPilot about budgets, affordability, loans, taxes, or forecasts..."
+                placeholder="Ask FinPilot about cash flow, purchase affordability, loan prepayment, or goal tracking..."
                 className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none resize-none font-sans"
               />
 
               <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                <div className="flex items-center gap-3 text-slate-400">
-                  <button
-                    type="button"
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.05]"
-                    title="Attach Statement or Document"
-                  >
-                    <Paperclip className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.05]"
-                    title="Active Ledger Connected"
-                  >
-                    <Landmark className="w-3.5 h-3.5" />
-                  </button>
-
+                <div className="flex items-center gap-2 text-slate-400">
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.05] text-[10px] font-mono text-slate-300 border border-white/[0.06]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-                    <span>FinPilot Core v2.4</span>
-                    <ChevronDown className="w-3 h-3 text-slate-500" />
+                    <span>Deterministic Financial Engine</span>
                   </div>
                 </div>
 
@@ -535,7 +512,7 @@ export default function AiAnalystPage() {
             </form>
 
             <div className="text-[10px] font-mono text-slate-500 text-center">
-              FinPilot AI provides educational financial insights and ledger calculations. Verify with qualified professionals.
+              FinPilot provides educational financial insights and deterministic ledger calculations. Not a SEBI registered investment advisor.
             </div>
           </div>
         </div>

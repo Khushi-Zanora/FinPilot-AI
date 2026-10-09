@@ -15,7 +15,6 @@ import {
   Laptop,
   CheckCircle2,
   Calendar,
-  CreditCard,
   Building,
   Wifi,
   Tv,
@@ -24,7 +23,6 @@ import {
   ArrowLeftRight,
   SlidersHorizontal,
   TrendingUp,
-  AlertTriangle,
   X
 } from 'lucide-react';
 
@@ -53,10 +51,10 @@ export default function DashboardPage() {
     { month: 'JUL', inflow: 165000, outflow: 89000, net: '₹76.0k net' },
     { month: 'AUG', inflow: 172000, outflow: 87700, net: '₹84.3k net' },
     { month: 'SEP', inflow: 175000, outflow: 88800, net: '₹86.2k net' },
-    { month: 'OCT (Est)', inflow: 185000, outflow: 66680, net: '₹1,18,320' },
+    { month: 'OCT', inflow: 185000, outflow: 66680, net: '₹1,18,320' },
   ];
 
-  // Category burn donut segments
+  // Category burn breakdown
   const categories = [
     { name: 'Housing & Rent', amount: 35000, percent: 46.8, color: '#05DF85' },
     { name: 'Food & Dining', amount: 14200, percent: 19.0, color: '#34D399' },
@@ -223,9 +221,9 @@ export default function DashboardPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
               <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
-              <span className="text-[#05DF85] font-semibold">TELEMETRY STREAM SYNCHRONIZED</span>
-              <span className="text-slate-600">/</span>
-              <span>SESSION #8849-OCT</span>
+              <span className="text-[#05DF85] font-semibold">LIVE FINANCIAL TELEMETRY</span>
+              <span className="text-slate-600">•</span>
+              <span>PAISE-PRECISION ACTIVE LEDGER</span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight flex items-baseline gap-3">
               <span>Financial Cockpit</span>
@@ -294,7 +292,7 @@ export default function DashboardPage() {
               <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20 font-semibold flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> +32.6%
               </span>
-              <span className="text-slate-500">VS SEP ₹4,29,150</span>
+              <span className="text-slate-500">VS PREV MONTH</span>
             </div>
           </div>
 
@@ -310,14 +308,14 @@ export default function DashboardPage() {
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400">
               <span>₹3,816.77 / DAY LEFT</span>
-              <span className="text-slate-500">31 DAYS IN CYCLE</span>
+              <span className="text-slate-500">POST GOAL EARMARKS</span>
             </div>
           </div>
 
-          {/* 3. MONTHLY INFLOW [OCT] */}
+          {/* 3. MONTHLY INFLOW */}
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] hover:border-white/[0.12] transition-all relative group">
             <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2">
-              <span className="font-semibold">MONTHLY INFLOW [OCT]</span>
+              <span className="font-semibold">MONTHLY INFLOW</span>
               <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-[#05DF85] text-[10px] font-bold border border-emerald-500/20">
                 100% CLEARED
               </span>
@@ -332,10 +330,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 4. TOTAL BURN [OCT] */}
+          {/* 4. TOTAL BURN */}
           <div className="p-5 rounded-xl bg-[#080D16] border border-white/[0.08] hover:border-white/[0.12] transition-all relative group">
             <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2">
-              <span className="font-semibold">TOTAL BURN [OCT]</span>
+              <span className="font-semibold">TOTAL BURN</span>
               <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
                 40.3% CEILING
               </span>
@@ -404,11 +402,6 @@ export default function DashboardPage() {
 
             {/* Visual Bar & Line Graphic */}
             <div className="h-64 flex items-end justify-between gap-2 sm:gap-6 pt-6 pb-2 px-2 border-b border-white/[0.06] relative">
-              {/* Subtle background grid line */}
-              <div className="absolute inset-x-0 top-1/4 border-b border-white/[0.03]"></div>
-              <div className="absolute inset-x-0 top-2/4 border-b border-white/[0.03]"></div>
-              <div className="absolute inset-x-0 top-3/4 border-b border-white/[0.03]"></div>
-
               {cashflowData.map((item, idx) => {
                 const maxVal = 200000;
                 const inflowHeight = (item.inflow / maxVal) * 100;
@@ -450,10 +443,9 @@ export default function DashboardPage() {
               <span className="text-xs font-mono font-bold text-slate-300">₹74,680 Tot</span>
             </div>
 
-            {/* Donut Graphic Representation */}
+            {/* Donut Graphic */}
             <div className="flex items-center justify-center my-4">
               <div className="relative w-40 h-40 rounded-full flex items-center justify-center">
-                {/* Outer glowing conic ring */}
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
@@ -467,7 +459,6 @@ export default function DashboardPage() {
                     )`
                   }}
                 ></div>
-                {/* Inner cutout for donut */}
                 <div className="absolute inset-3.5 rounded-full bg-[#080D16] flex flex-col items-center justify-center text-center p-2">
                   <span className="text-[10px] font-mono uppercase text-slate-400">PRIMARY</span>
                   <span className="text-base font-mono font-bold text-[#05DF85] leading-tight">46.8%</span>
@@ -504,30 +495,30 @@ export default function DashboardPage() {
                   <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-[#05DF85]">
                     <Sparkles className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-base font-bold text-white">AI Pilot Intelligence</h3>
+                  <h3 className="text-base font-bold text-white">AI Financial Insights</h3>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20">
-                  Live Arbitrage
+                  Cashflow Check
                 </span>
               </div>
 
-              {/* Insight Bullet 1 */}
+              {/* Insight 1 */}
               <div className="p-3.5 rounded-lg bg-[#0D1422] border border-white/[0.06] flex items-start gap-3">
                 <div className="w-5 h-5 rounded bg-emerald-500/20 text-[#05DF85] flex items-center justify-center shrink-0 mt-0.5">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Identified <strong className="text-[#05DF85] font-mono">₹3,400</strong> recurring monthly savings across 2 overlapping cloud and streaming subscriptions (AWS Personal Sandbox & Apple One duplicate cloud).
+                  Identified <strong className="text-[#05DF85] font-mono">₹3,400</strong> recurring monthly savings across overlapping cloud and entertainment subscriptions.
                 </p>
               </div>
 
-              {/* Insight Bullet 2 */}
+              {/* Insight 2 */}
               <div className="p-3.5 rounded-lg bg-[#0D1422] border border-white/[0.06] flex items-start gap-3">
                 <div className="w-5 h-5 rounded bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
                   <Shield className="w-3 h-3" />
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Your <strong className="text-white">Emergency Reserve</strong> is pacing ahead of schedule (<span className="text-[#05DF85] font-mono font-bold">82% funded</span>). Maintaining current cadence achieves the ₹3,00,000 threshold by Dec 15.
+                  Your <strong className="text-white">Emergency Reserve</strong> is <span className="text-[#05DF85] font-mono font-bold">82% funded</span>. Maintaining current monthly savings achieves the ₹3,00,000 threshold by Dec 15.
                 </p>
               </div>
             </div>
@@ -544,7 +535,7 @@ export default function DashboardPage() {
                 onClick={() => navigate('/workspace/ai')}
                 className="py-2 px-3.5 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] text-xs font-semibold transition-all"
               >
-                Dismiss
+                Ask AI
               </button>
             </div>
           </div>
@@ -554,13 +545,13 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-white">Active Financial Targets</h3>
-                <p className="text-xs text-slate-400">Automated recurrent savings allocation</p>
+                <p className="text-xs text-slate-400">Automated savings goal allocations</p>
               </div>
               <Link
                 to="/workspace/goals"
                 className="text-xs font-mono text-[#05DF85] hover:underline flex items-center gap-1 font-semibold"
               >
-                <span>Configure All (5)</span>
+                <span>Manage Goals</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -624,7 +615,7 @@ export default function DashboardPage() {
                   ₹30,678 Pending
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mb-4">Due within next 10-14 days</p>
+              <p className="text-xs text-slate-400 mb-4">Upcoming bills due within 30 days</p>
 
               {/* Obligation Items */}
               <div className="space-y-2.5">
@@ -664,7 +655,7 @@ export default function DashboardPage() {
               className="mt-4 w-full py-2 px-3 rounded-lg bg-[#0D1422] hover:bg-[#121B2B] text-slate-300 border border-white/[0.08] text-xs font-semibold transition-all flex items-center justify-center gap-2"
             >
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>View Complete Bill Ledger</span>
+              <span>View Loans & Mandates</span>
             </button>
           </div>
 
@@ -674,8 +665,8 @@ export default function DashboardPage() {
               {/* Header & Quick Actions */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-base font-bold text-white">Verified Transaction Feed</h3>
-                  <p className="text-xs text-slate-400">Real-time synced banking and payment gateway journals</p>
+                  <h3 className="text-base font-bold text-white">Recent Transactions</h3>
+                  <p className="text-xs text-slate-400">Live ledger of incoming credits and outgoing expenses</p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -708,7 +699,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-12 gap-2 text-[10px] font-mono uppercase tracking-wider text-slate-500 pb-2 border-b border-white/[0.06]">
                 <span className="col-span-4">DATE & ENTITY</span>
                 <span className="col-span-3">CLASSIFICATION</span>
-                <span className="col-span-3">FUNDING ACCOUNT</span>
+                <span className="col-span-3">ACCOUNT</span>
                 <span className="col-span-2 text-right">AMOUNT (INR)</span>
               </div>
 
@@ -753,13 +744,13 @@ export default function DashboardPage() {
             <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-slate-400">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
-                <span>Bank Aggregator API v2.4 Active</span>
+                <span>Exact Paise-Precision Arithmetic</span>
               </div>
               <Link
                 to="/workspace/transactions"
                 className="text-[#05DF85] hover:underline flex items-center gap-1 font-semibold"
               >
-                <span>Explore Entire Ledger (312 entries)</span>
+                <span>View Full Transaction Ledger</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -827,10 +818,10 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">ENTITY / DESCRIPTION</label>
+                <label className="block text-slate-400 mb-1 font-mono">DESCRIPTION</label>
                 <input
                   type="text"
-                  placeholder="e.g. Starbucks Coffee"
+                  placeholder="e.g. Groceries"
                   value={txForm.description}
                   onChange={(e) => setTxForm({ ...txForm, description: e.target.value })}
                   className="w-full px-3 py-2 bg-[#0D1422] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-[#05DF85]"
@@ -890,7 +881,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              Configure a dedicated savings target with automated monthly earmarks and safety cushions.
+              Configure a dedicated savings target with monthly earmarks protected from daily spending.
             </p>
             <button
               onClick={() => {
