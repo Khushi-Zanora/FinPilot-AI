@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import OnboardingPage from './pages/OnboardingPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 
@@ -26,7 +27,12 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+      {/* Direct convenience aliases */}
+      <Route path="/dashboard" element={<Navigate to="/workspace/dashboard" replace />} />
+      <Route path="/ai-analyst" element={<Navigate to="/workspace/ai" replace />} />
 
       {/* Protected Workspace Routes */}
       <Route path="/workspace" element={<ProtectedRoute />}>
@@ -40,6 +46,8 @@ export default function App() {
         <Route path="investments" element={<InvestmentsPage />} />
         <Route path="insurance" element={<InsurancePage />} />
         <Route path="ai" element={<AiAnalystPage />} />
+        <Route path="reports" element={<DashboardPage />} />
+        <Route path="notifications" element={<DashboardPage />} />
         <Route path="billing" element={<BillingPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
