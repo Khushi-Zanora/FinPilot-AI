@@ -2,420 +2,874 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
-import { apiRequest } from '../api/client.js';
 import {
   Compass,
   ArrowRight,
   TrendingUp,
+  Shield,
   ShieldCheck,
-  Bot,
-  Target,
-  PieChart,
-  Landmark,
-  CheckCircle2,
-  Sparkles,
-  HelpCircle,
-  Mail,
-  Send,
   Lock,
-  ChevronDown
+  Sparkles,
+  CheckCircle2,
+  ChevronDown,
+  Layers,
+  Landmark,
+  PiggyBank,
+  PieChart,
+  Bot,
+  Play,
+  Calendar,
+  Check,
+  FileText,
+  SlidersHorizontal,
+  CreditCard,
+  Zap
 } from 'lucide-react';
 
 export default function LandingPage() {
-  // Contact form state
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactSubject, setContactSubject] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
-  const [contactStatus, setContactStatus] = useState({ state: 'idle', message: '' });
+  // Interactive States
+  const [billingInterval, setBillingInterval] = useState('monthly'); // 'monthly' | 'yearly'
+  const [chartPeriod, setChartPeriod] = useState('6M');
+  const [openFaq, setOpenFaq] = useState(0); // first item open by default
 
-  async function handleContactSubmit(e) {
-    e.preventDefault();
-    try {
-      setContactStatus({ state: 'loading', message: 'Sending message...' });
-      const res = await apiRequest('/public/contact', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: contactName,
-          email: contactEmail,
-          subject: contactSubject,
-          message: contactMessage
-        })
-      });
-      setContactStatus({ state: 'success', message: res.message || 'Message sent successfully!' });
-      setContactName('');
-      setContactEmail('');
-      setContactSubject('');
-      setContactMessage('');
-    } catch (err) {
-      setContactStatus({ state: 'error', message: err.message || 'Failed to send message.' });
+  const faqs = [
+    {
+      q: 'Does FinPilot have access to my real bank credentials?',
+      a: 'No. FinPilot is engineered for zero-trust security. You track balances via double-entry ledger bookkeeping and manual imports. We do not require or store your net banking credentials or bank sync passwords, preventing external liability.'
+    },
+    {
+      q: 'How does the AI Analyst make affordability decisions?',
+      a: 'The AI Analyst does not invent or hallucinate numbers. It passes your query into a deterministic mathematical engine in integer paise minor units. It reserves your 3x emergency fund and active 30-day bill commitments, calculating exact monthly surplus availability.'
+    },
+    {
+      q: 'Can I track Indian assets like SGB, PPF, EPF, and Mutual Funds?',
+      a: 'Yes. FinPilot natively supports Indian asset classes including Sovereign Gold Bonds (SGB), Public Provident Fund (PPF), Employee Provident Fund (EPF), Fixed/Recurring Deposits, Mutual Funds, and Index ETFs.'
+    },
+    {
+      q: 'What happens if I downgrade from Pro to the Free plan?',
+      a: 'All your recorded historical data, accounts, and transactions remain completely preserved and accessible. Features like advanced amortization schedules and unlimited AI queries will transition into read-only or free tier thresholds.'
+    },
+    {
+      q: 'Is my financial data encrypted and private?',
+      a: 'All data is encrypted in transit via TLS 1.3 and at rest using AES-256. FinPilot enforces strict user-scoped tenancy with zero third-party monetization or PII advertising sharing.'
     }
-  }
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#05080E] text-slate-100 selection:bg-emerald-500/30 selection:text-emerald-200 overflow-x-hidden">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative pt-24 pb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))] pointer-events-none" />
+      {/* ========================================================================= */}
+      {/* 1. HERO SECTION */}
+      {/* ========================================================================= */}
+      <section className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden">
+        {/* Subtle Background Radial Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-[radial-gradient(ellipse_at_center,rgba(5,223,133,0.12)_0%,rgba(5,223,133,0.02)_50%,rgba(5,8,14,0)_75%)] pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-8 animate-fade-in">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI-Driven Financial Intelligence & Cashflow Architecture</span>
+          {/* Top Announcement Pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D1422] border border-white/[0.08] text-xs font-medium text-slate-300 mb-8 shadow-sm hover:border-emerald-500/30 transition-all cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-slate-200">Introducing Financial Analyst v2.4</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-emerald-400 font-semibold">Built for Modern Wealth</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight sm:leading-none mb-6">
+          {/* Large Hero Heading */}
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-serif tracking-tight text-white max-w-4xl mx-auto leading-[1.08] mb-6">
             Your money. Your goals.{' '}
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            <span className="italic block mt-1 bg-gradient-to-r from-[#05DF85] via-[#34D399] to-[#22D3EE] bg-clip-text text-transparent">
               A clearer direction.
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            FinPilot gives you total clarity over your tracked cash flow, loan amortizations, goal forecasts, and investable surplus with an intelligent AI financial analyst.
+          {/* Subtitle */}
+          <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
+            Autonomous personal finance management for forward-looking individuals. Track multi-bank cash flow, run automated affordability simulations, manage debt amortisation, and protect future reserves with mathematical precision.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+          {/* Hero CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-8">
             <Link
               to="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-base shadow-xl shadow-emerald-500/25 transition-all hover:scale-[1.02]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-extrabold text-sm uppercase tracking-wider transition-all shadow-glow-mint hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>Get Started Free</span>
-              <ArrowRight className="w-5 h-5" />
+              <span>Launch Platform</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </Link>
-            <Link
-              to="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-base border border-slate-700 transition-colors"
+
+            <a
+              href="#demo"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 font-semibold text-sm border border-white/[0.08] transition-colors"
             >
-              Sign In to Workspace
-            </Link>
+              <Play className="w-3.5 h-3.5 fill-slate-300 text-slate-300" />
+              <span>Explore Live Demo</span>
+            </a>
           </div>
 
-          {/* Interactive Feature Highlights Strip */}
-          <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
-            <div className="glass-panel p-4 rounded-xl border border-slate-800">
-              <div className="text-emerald-400 font-bold text-lg">0% Float Error</div>
-              <div className="text-xs text-slate-400">Strict integer minor-unit paise precision</div>
-            </div>
-            <div className="glass-panel p-4 rounded-xl border border-slate-800">
-              <div className="text-cyan-400 font-bold text-lg">AI Analyst</div>
-              <div className="text-xs text-slate-400">Affordability math & surplus suggestions</div>
-            </div>
-            <div className="glass-panel p-4 rounded-xl border border-slate-800">
-              <div className="text-indigo-400 font-bold text-lg">Amortization</div>
-              <div className="text-xs text-slate-400">Full principal/interest loan schedules</div>
-            </div>
-            <div className="glass-panel p-4 rounded-xl border border-slate-800">
-              <div className="text-amber-400 font-bold text-lg">Zero Leakage</div>
-              <div className="text-xs text-slate-400">Transfer isolation & double-count safety</div>
+          {/* Trust Indicators Strip */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-medium">
+            <span className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-[#05DF85]" /> Bank-Grade 256-bit Encryption
+            </span>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#05DF85]" /> Strictly Zero PII Monetization
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#05DF85]" /> Deterministic Math Engine
+            </span>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 2. HERO INTERACTIVE DASHBOARD PREVIEW FRAME */}
+          {/* ========================================================================= */}
+          <div id="demo" className="mt-14 relative max-w-5xl mx-auto text-left">
+            {/* Outer Glow effect */}
+            <div className="absolute -inset-1.5 bg-gradient-to-b from-[#05DF85]/20 to-transparent rounded-3xl blur-xl opacity-40 pointer-events-none"></div>
+
+            <div className="relative rounded-2xl bg-[#090E18] border border-white/[0.1] shadow-2xl overflow-hidden backdrop-blur-2xl">
+              {/* Window Header Bar */}
+              <div className="px-5 py-3.5 border-b border-white/[0.08] bg-[#070B13]/90 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                  <span className="ml-3 text-xs font-mono text-slate-400">
+                    FinPilot Super-Executive Workspace • v2.4 Live
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#05DF85] animate-pulse"></span>
+                  <span className="text-[11px] font-mono text-slate-400">Status: All Feeds Synchronised</span>
+                </div>
+              </div>
+
+              {/* Window Content */}
+              <div className="p-5 sm:p-7 space-y-6">
+                {/* 3 Metrics Cards Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Metric 1 */}
+                  <div className="p-4 rounded-xl bg-[#0D1422] border border-white/[0.06]">
+                    <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-1.5">
+                      <span>TRACKED LIQUID CAPITAL</span>
+                      <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded text-[10px]">+4.8% M/M</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-bold font-sans text-white tracking-tight">
+                      ₹4,82,450
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1.5">
+                      Liquid cash across 4 primary accounts
+                    </div>
+                  </div>
+
+                  {/* Metric 2 */}
+                  <div className="p-4 rounded-xl bg-[#0D1422] border border-emerald-500/30 bg-emerald-950/10">
+                    <div className="flex items-center justify-between text-emerald-400 text-xs font-mono uppercase tracking-wider mb-1.5">
+                      <span>NET COMMITTED SURPLUS</span>
+                      <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded font-bold">EMERGENCY BUFFER: 3.2X</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-bold font-sans text-[#05DF85] tracking-tight">
+                      ₹1,18,320
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1.5">
+                      Emergency Reserve Locked: ₹1.5L
+                    </div>
+                  </div>
+
+                  {/* Metric 3 */}
+                  <div className="p-4 rounded-xl bg-[#0D1422] border border-white/[0.06]">
+                    <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-1.5">
+                      <span>MONTHLY PREDICTED OUTFLOW</span>
+                      <span className="text-rose-400 text-[10px] bg-rose-500/10 px-1.5 py-0.5 rounded font-bold">DUE IN 14 DAYS</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-bold font-sans text-white tracking-tight">
+                      ₹1,85,000
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1.5">
+                      Includes ₹42k loan amortisation
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Split: Vector Chart & AI Execution Stream */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  {/* Left Column: Vector Chart */}
+                  <div className="lg:col-span-7 p-5 rounded-xl bg-[#0D1422] border border-white/[0.06] flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">Deterministic Cash-Flow Vector</h4>
+                        <p className="text-xs text-slate-500">Autonomous multi-account trajectory forecast</p>
+                      </div>
+
+                      {/* Period Pills */}
+                      <div className="flex items-center gap-1 p-1 rounded-lg bg-[#070B13] border border-white/[0.06] text-xs font-mono">
+                        {['1M', '3M', '6M', '1Y'].map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setChartPeriod(p)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                              chartPeriod === p
+                                ? 'bg-[#05DF85] text-slate-950 font-bold'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Vector Line Graph Artwork */}
+                    <div className="h-44 w-full relative flex items-end py-2">
+                      <svg className="w-full h-full overflow-visible" viewBox="0 0 400 120" fill="none">
+                        <defs>
+                          <linearGradient id="vectorGlow" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#05DF85" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#05DF85" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        {/* Area Fill */}
+                        <path
+                          d="M 0 100 Q 80 90, 150 70 T 280 40 T 400 15 L 400 120 L 0 120 Z"
+                          fill="url(#vectorGlow)"
+                        />
+                        {/* Dashed Baseline */}
+                        <path
+                          d="M 0 95 L 400 50"
+                          stroke="#334155"
+                          strokeWidth="1.5"
+                          strokeDasharray="4 4"
+                        />
+                        {/* Main Vector Line */}
+                        <path
+                          d="M 0 100 Q 80 90, 150 70 T 280 40 T 400 15"
+                          stroke="#05DF85"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                        {/* Glowing Endpoint */}
+                        <circle cx="400" cy="15" r="4.5" fill="#05DF85" className="animate-pulse" />
+                      </svg>
+                    </div>
+
+                    {/* Chart Legend */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3 border-t border-white/[0.04]">
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-0.5 bg-[#05DF85]"></span>
+                          <span>Execution Baseline</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-0.5 bg-slate-600"></span>
+                          <span>Projected Baseline</span>
+                        </span>
+                      </div>
+                      <span className="font-mono text-emerald-400">Current Velocity: +₹38,200/mo</span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: AI Prompt Execution Stream */}
+                  <div className="lg:col-span-5 p-5 rounded-xl bg-[#0D1422] border border-white/[0.06] flex flex-col justify-between space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+                      <span className="text-xs font-mono font-bold text-slate-300 flex items-center gap-1.5">
+                        <Bot className="w-3.5 h-3.5 text-[#05DF85]" />
+                        <span>AI PROMPT STREAM</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400">MATH REASONER v2.4</span>
+                    </div>
+
+                    {/* User Prompt Bubble */}
+                    <div className="p-3 rounded-lg bg-[#070B13] border border-white/[0.04] text-xs text-slate-300">
+                      <span className="text-[10px] text-slate-500 font-mono block mb-1">USER QUERY</span>
+                      <p className="font-medium text-white italic">
+                        “Can I afford the premium ₹75,000 laptop in 3 months?”
+                      </p>
+                    </div>
+
+                    {/* AI Simulation Result Card */}
+                    <div className="p-3.5 rounded-lg bg-[#08101E] border border-emerald-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                          <Check className="w-3 h-3" />
+                          <span>Affordability: Approved</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">CONFIDENCE: 99.4%</span>
+                      </div>
+
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        Allocation of <strong className="text-white font-semibold">₹25,000/month</strong> does not breach your safe reserves target. 3x emergency buffer remains intact.
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="p-1.5 rounded bg-[#0D1422] border border-white/[0.04] text-[10px]">
+                          <span className="text-slate-500 block">Monthly Allocation</span>
+                          <strong className="text-white font-mono">₹25,000/mo</strong>
+                        </div>
+                        <div className="p-1.5 rounded bg-[#0D1422] border border-white/[0.04] text-[10px]">
+                          <span className="text-slate-500 block">Surplus Post-Txn</span>
+                          <strong className="text-emerald-400 font-mono">₹43,320</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1">
+                      <span className="text-slate-500 font-mono">Verified Seeded</span>
+                      <a href="#ai-analyst" className="text-emerald-400 hover:underline font-medium">
+                        View Execution Plan →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 border-t border-slate-900 bg-slate-950/60">
+      {/* ========================================================================= */}
+      {/* 3. METRICS / SOCIAL PROOF STRIP */}
+      {/* ========================================================================= */}
+      <section className="py-14 border-y border-white/[0.06] bg-[#070B13]/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Capabilities</h2>
-            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">Everything you need to master your wealth</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5">
-                <TrendingUp className="w-6 h-6" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+            {/* Stat 1 */}
+            <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
+              <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
+                ₹150Cr+
               </div>
-              <h3 className="text-lg font-bold mb-2">Tracked Cash & Net Cash Flow</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Derive accurate balances across bank accounts, cash, and digital wallets with safe internal transfer handling that prevents double-counting.
+              <div className="text-sm font-bold text-slate-200">Tracked Assets</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Real-time monitoring across user-connected assets
               </p>
             </div>
 
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-5">
-                <Bot className="w-6 h-6" />
+            {/* Stat 2 */}
+            <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
+              <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
+                99.4%
               </div>
-              <h3 className="text-lg font-bold mb-2">AI Financial Analyst</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Ask questions like <em>“Can I afford a ₹75,000 phone in 3 months?”</em> or discover how to allocate your investable surplus into FDs, RDs, or Index Funds.
+              <div className="text-sm font-bold text-slate-200">Simulation Accuracy</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Zero floating-point math error tolerance
               </p>
             </div>
 
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-5">
-                <Landmark className="w-6 h-6" />
+            {/* Stat 3 */}
+            <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
+              <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
+                3.4x
               </div>
-              <h3 className="text-lg font-bold mb-2">Loan & EMI Amortization</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Complete mathematical schedules splitting principal and interest components, tracking remaining principal and future due dates with precision.
+              <div className="text-sm font-bold text-slate-200">Avg Goal Speed</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Accelerated milestone attainment vs DIY methods
               </p>
             </div>
 
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-5">
-                <Target className="w-6 h-6" />
+            {/* Stat 4 */}
+            <div className="space-y-1.5 border-l-2 border-[#05DF85] pl-4">
+              <div className="text-3xl sm:text-4xl font-black font-sans text-white tracking-tight">
+                4.9/5
               </div>
-              <h3 className="text-lg font-bold mb-2">Savings Goals & Earmarks</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Set targets for emergency funds, travel, or gadgets. Real-time contribution tracking and deterministic monthly savings requirements.
-              </p>
-            </div>
-
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-5">
-                <PieChart className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold mb-2">Budgets & Threshold Alerts</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Category spending limits with automatic calculation of consumed percentages and proactive alerts when spending crosses 80% or 100%.
-              </p>
-            </div>
-
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-5">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold mb-2">Investments & Insurance</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Portfolio asset allocation across mutual funds, stocks, and deposits alongside insurance policy tracking and renewal alarms.
+              <div className="text-sm font-bold text-slate-200">User Rating</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Reviewed by 2,500+ forward-looking users
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How it Works */}
-      <section id="how-it-works" className="py-20 border-t border-slate-900">
+      {/* ========================================================================= */}
+      {/* 4. FOUR FOUNDATIONAL PILLARS SECTION */}
+      {/* ========================================================================= */}
+      <section id="features" className="py-24 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Simple Workflow</h2>
-            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">How FinPilot Works</p>
+          {/* Header */}
+          <div className="max-w-3xl mb-16">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#05DF85] block mb-2">
+              FINANCIAL ARCHITECTURE
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-serif tracking-tight text-white mb-4">
+              Four foundational pillars of algorithmic capital control.
+            </h2>
+            <p className="text-base text-slate-400 leading-relaxed">
+              Built from the ground up on zero-leakage ledger accounting principles. FinPilot eliminates intuitive guesswork from personal wealth management.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto text-lg font-bold">
-                1
-              </div>
-              <h3 className="text-lg font-bold">Record Your Ledger</h3>
-              <p className="text-sm text-slate-400">
-                Add your bank, cash, or digital accounts. Log income, expenses, and internal transfers with zero double-counting.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center mx-auto text-lg font-bold">
-                2
-              </div>
-              <h3 className="text-lg font-bold">Define Goals & Commitments</h3>
-              <p className="text-sm text-slate-400">
-                Track EMIs, insurance renewals, and savings earmarks. The calculation engine isolates available uncommitted cash.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 flex items-center justify-center mx-auto text-lg font-bold">
-                3
-              </div>
-              <h3 className="text-lg font-bold">Consult Your AI Analyst</h3>
-              <p className="text-sm text-slate-400">
-                Ask about upcoming purchase affordability and explore tailored investment instruments for your genuine surplus.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 border-t border-slate-900 bg-slate-950/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Transparent Pricing</h2>
-            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">Choose the plan that matches your goals</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Free Tier */}
-            <div className="glass-panel p-8 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          {/* 2x2 Grid of Feature Pillar Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Pillar 1 */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border border-white/[0.08] hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
               <div>
-                <h3 className="text-lg font-bold mb-1">Free Tier</h3>
-                <p className="text-xs text-slate-400 mb-6">Essential personal money tracking</p>
-                <div className="text-3xl font-extrabold mb-6">₹0 <span className="text-xs font-normal text-slate-400">/ forever</span></div>
-
-                <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Core income & expense tracking</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Tracked cash & net cashflow</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Up to 3 active savings goals</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Up to 5 category budgets</li>
-                </ul>
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#05DF85] mb-6 group-hover:scale-105 transition-transform">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-mono text-emerald-400 uppercase tracking-wider mb-2">
+                  PILLAR 01: ADVANCED CASH-FLOW
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Deterministic Cash Flow Forecast
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  Multi-bank automated aggregation with deterministic categorisation algorithms so you know uncommitted liquidity 60 days ahead.
+                </p>
               </div>
-              <Link to="/register" className="block text-center py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-sm transition-colors">
+
+              <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs flex items-center justify-between">
+                <span className="text-slate-400">Net Uncommitted Surplus:</span>
+                <span className="font-mono text-[#05DF85] font-bold">78% Protected</span>
+              </div>
+            </div>
+
+            {/* Pillar 2 */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border border-white/[0.08] hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6 group-hover:scale-105 transition-transform">
+                  <PiggyBank className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-2">
+                  PILLAR 02: CAPITAL PRESERVATION
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Targeted Savings Earmarks
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  Ring-fenced funds for emergency, vacations, gadgets, and life goals. Prevent accidental capital leakage without opening dozens of bank accounts.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs flex items-center justify-between">
+                <span className="text-slate-400">Emergency Buffer Status:</span>
+                <span className="font-mono text-cyan-400 font-bold">Locked (₹1.5L Reserved)</span>
+              </div>
+            </div>
+
+            {/* Pillar 3 */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border border-white/[0.08] hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-105 transition-transform">
+                  <Landmark className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-mono text-indigo-400 uppercase tracking-wider mb-2">
+                  PILLAR 03: SCHEDULE & LOANS
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Debt & Amortisation Engine
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  Exact daily interest accruals, prepayments impact forecasting, and automated balance amortization for home, auto, and personal loans.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs flex items-center justify-between">
+                <span className="text-slate-400">Prepayment Optimization:</span>
+                <span className="font-mono text-indigo-400 font-bold">-14 Months Saved</span>
+              </div>
+            </div>
+
+            {/* Pillar 4 */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border border-white/[0.08] hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6 group-hover:scale-105 transition-transform">
+                  <PieChart className="w-6 h-6" />
+                </div>
+                <div className="text-xs font-mono text-amber-400 uppercase tracking-wider mb-2">
+                  PILLAR 04: TREASURY ALLOCATION
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Portfolio & Leverage Hub
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  Track mutual funds, equity portfolios, SGBs, and alternative assets in a unified ledger. Gain deep visibility into asset allocation and net-worth trajectories.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04] text-xs flex items-center justify-between">
+                <span className="text-slate-400">Consolidated Net Worth:</span>
+                <span className="font-mono text-amber-400 font-bold">Real-time NAV Feeds</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 5. THE INTELLIGENCE LAYER (CFA IN YOUR POCKET) */}
+      {/* ========================================================================= */}
+      <section id="ai-analyst" className="py-24 border-t border-white/[0.06] bg-[#070B13]/60 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-6 space-y-6">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#05DF85] block">
+                INTELLIGENCE ENGINE
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-serif tracking-tight text-white leading-tight">
+                The Intelligence Layer: Your personal CFA in your pocket.
+              </h2>
+              <p className="text-base text-slate-400 leading-relaxed">
+                Driven by offline deterministic models and LLMs. FinPilot's AI Analyst is constrained by mathematical logic—no hallucinations, no fabricated numbers. Every simulation runs through rigorous accounting equations.
+              </p>
+
+              {/* 3 Pillars / Capabilities List */}
+              <div className="space-y-4 pt-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#05DF85] shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Context-Aware Calculations</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Evaluates real income streams, upcoming EMIs, and essential monthly burn rates.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#05DF85] shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Structured Scenario Analysis</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Runs multi-scenario stress tests before you commit to large discretionary purchases.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#05DF85] shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Tactical Investment Suggestions</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Distinguishes liquid emergency funds from true surplus and suggests suitable instruments.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Terminal Card Replicating Stitch UI */}
+            <div className="lg:col-span-6">
+              <div className="rounded-2xl bg-[#090E18] border border-white/[0.1] shadow-2xl p-6 space-y-4">
+                {/* Terminal Top Bar */}
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#05DF85]">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">FINPILOT CAPITAL ENGINE</span>
+                      <span className="text-[10px] font-mono text-slate-500">Autonomous Reasoning Session #8412</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0D1422] text-emerald-400 border border-emerald-500/20">
+                    LIVE MODEL READY
+                  </span>
+                </div>
+
+                {/* User Prompt */}
+                <div className="p-3.5 rounded-xl bg-[#0D1422] border border-white/[0.04]">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase block mb-1">USER QUERY</span>
+                  <p className="text-sm font-medium text-slate-200">
+                    “Can I afford a vacation of ₹1,50,000 to Europe in December without leveraging emergency reserves?”
+                  </p>
+                </div>
+
+                {/* Simulation Output Card */}
+                <div className="p-4 rounded-xl bg-[#08101E] border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-500/10 text-[#05DF85] border border-emerald-500/30">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>AFFORDABILITY: RECOMMENDED</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">HIGH CONFIDENCE</span>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    A monthly earmark of <strong className="text-white font-semibold">₹37,500</strong> over 4 months leaves a safe liquid buffer of <strong className="text-emerald-400 font-semibold">₹78,000</strong> for your monthly living expenses.
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-center font-mono">
+                    <div className="p-2 rounded bg-[#0D1422] border border-white/[0.04]">
+                      <span className="text-[10px] text-slate-500 block">Est. Outlay</span>
+                      <span className="text-xs font-bold text-white">₹1.50L</span>
+                    </div>
+                    <div className="p-2 rounded bg-[#0D1422] border border-white/[0.04]">
+                      <span className="text-[10px] text-slate-500 block">Duration</span>
+                      <span className="text-xs font-bold text-white">4 Months</span>
+                    </div>
+                    <div className="p-2 rounded bg-[#0D1422] border border-white/[0.04]">
+                      <span className="text-[10px] text-slate-500 block">Impact</span>
+                      <span className="text-xs font-bold text-emerald-400">Zero Debt</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-500">Constraint: 3x Reserves Preserved</span>
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#05DF85] hover:underline"
+                  >
+                    <span>Generate Goal Earmark</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 6. TRANSPARENT PRICING SECTION */}
+      {/* ========================================================================= */}
+      <section id="pricing" className="py-24 border-t border-white/[0.06] relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#05DF85] block mb-2">
+              PREDICTABLE MEMBERSHIP
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-serif tracking-tight text-white mb-4">
+              Transparent pricing. Exponential financial clarity.
+            </h2>
+            <p className="text-base text-slate-400 leading-relaxed mb-8">
+              Start free forever. Upgrade to Pro when you're ready to unlock advanced simulations and our AI Analyst engine.
+            </p>
+
+            {/* Toggle Switch */}
+            <div className="inline-flex items-center gap-2 p-1.5 rounded-full bg-[#0D1422] border border-white/[0.08]">
+              <button
+                onClick={() => setBillingInterval('monthly')}
+                className={`px-5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide transition-all ${
+                  billingInterval === 'monthly'
+                    ? 'bg-[#05DF85] text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval('yearly')}
+                className={`px-5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wide transition-all ${
+                  billingInterval === 'yearly'
+                    ? 'bg-[#05DF85] text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Yearly (Save 33%)
+              </button>
+            </div>
+          </div>
+
+          {/* Pricing Tier Cards (2 Column Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Starter Card */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border border-white/[0.08] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-bold text-white">Free Starter</h3>
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                    FOREVER
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-6">
+                  For individuals getting organized and tracking essential cash flow month over month.
+                </p>
+
+                <div className="text-4xl font-extrabold text-white mb-6 font-sans">
+                  ₹0{' '}
+                  <span className="text-xs font-normal text-slate-500">/ forever</span>
+                </div>
+
+                <div className="space-y-3 text-xs text-slate-300 mb-8 border-t border-white/[0.06] pt-6">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Track up to 3 bank & cash accounts</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Up to 150 monthly transactions (zero double-count)</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Basic monthly category budgeting</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Up to 3 active savings goal earmarks</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Standard cash-flow status reports</span>
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                to="/register"
+                className="w-full py-3 px-4 rounded-xl bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 font-bold text-xs uppercase tracking-wider text-center border border-white/[0.08] transition-colors"
+              >
                 Get Started Free
               </Link>
             </div>
 
-            {/* Premium Monthly */}
-            <div className="glass-panel p-8 rounded-2xl border-2 border-emerald-500 relative flex flex-col justify-between shadow-2xl shadow-emerald-500/10">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-xs font-bold uppercase tracking-wider">
-                Most Popular
+            {/* Pro Wealth OS Card */}
+            <div className="p-8 rounded-2xl bg-[#090E18] border-2 border-[#05DF85] relative flex flex-col justify-between shadow-glow-mint">
+              <div className="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-[#05DF85] text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                MOST POPULAR
               </div>
+
               <div>
-                <h3 className="text-lg font-bold mb-1">Premium Monthly</h3>
-                <p className="text-xs text-slate-400 mb-6">Complete financial management & AI</p>
-                <div className="text-3xl font-extrabold mb-6">₹99 <span className="text-xs font-normal text-slate-400">/ month</span></div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-bold text-white">Pro Wealth OS</h3>
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-[#05DF85] border border-emerald-500/20">
+                    ALL FEATURES
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-6">
+                  For ambitious individuals optimizing growing assets, loan debt, and complex purchase decisions.
+                </p>
 
-                <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Unlimited savings goals & forecasts</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Full Loan & EMI Amortization engine</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Investment portfolio & allocation</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Insurance policies & renewal alarms</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> AI Financial Analyst & surplus guidance</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> CSV exports with formula injection safety</li>
-                </ul>
+                <div className="text-4xl font-extrabold text-white mb-6 font-sans">
+                  {billingInterval === 'monthly' ? '₹99' : '₹799'}{' '}
+                  <span className="text-xs font-normal text-slate-500">
+                    / {billingInterval === 'monthly' ? 'month' : 'year'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-xs text-slate-300 mb-8 border-t border-white/[0.06] pt-6">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span className="font-semibold text-white">Unlimited accounts & unified portfolio</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span className="font-semibold text-white">Full Loan & EMI Amortisation Engine</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span className="font-semibold text-white">Advanced multi-scenario goal forecasts</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span className="font-semibold text-white">AI Financial Analyst (Unlimited Queries)</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Investment portfolio & asset allocation</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#05DF85] shrink-0" />
+                    <span>Priority CSV & PDF financial exports</span>
+                  </div>
+                </div>
               </div>
-              <Link to="/register" className="block text-center py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-all shadow-md shadow-emerald-500/20">
-                Upgrade to Pro
-              </Link>
-            </div>
 
-            {/* Premium Yearly */}
-            <div className="glass-panel p-8 rounded-2xl border border-slate-800 flex flex-col justify-between">
-              <div>
-                <h3 className="text-lg font-bold mb-1">Premium Yearly</h3>
-                <p className="text-xs text-slate-400 mb-6">Best value — Save over 33%</p>
-                <div className="text-3xl font-extrabold mb-6">₹799 <span className="text-xs font-normal text-slate-400">/ year</span></div>
-
-                <ul className="space-y-3 text-sm text-slate-300 mb-8">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Everything in Premium Monthly</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Equivalent to ₹66.50/month</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Priority feature updates & AI models</li>
-                </ul>
-              </div>
-              <Link to="/register" className="block text-center py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-sm transition-colors">
-                Get Annual Pass
+              <Link
+                to="/register"
+                className="w-full py-3 px-4 rounded-xl bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-extrabold text-xs uppercase tracking-wider text-center transition-all shadow-glow-mint"
+              >
+                Upgrade to Pro →
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-20 border-t border-slate-900">
+      {/* ========================================================================= */}
+      {/* 7. FREQUENTLY ASKED QUESTIONS */}
+      {/* ========================================================================= */}
+      <section id="faq" className="py-24 border-t border-white/[0.06] bg-[#070B13]/40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">FAQ</h2>
-            <p className="text-3xl font-extrabold">Frequently Asked Questions</p>
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#05DF85] block mb-2">
+              CLARITY & ASSURANCE
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-serif tracking-tight text-white mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-sm text-slate-400">
+              Everything you need to know about FinPilot's security, calculations, and architecture.
+            </p>
           </div>
 
-          <div className="space-y-6">
-            <div className="glass-panel p-6 rounded-xl border border-slate-800">
-              <h4 className="font-bold text-base mb-2">Does FinPilot connect directly to my bank accounts?</h4>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                No. FinPilot is designed with user privacy and safety first. Balances are derived from user-recorded ledger accounts and transactions, not automated third-party bank credentials.
-              </p>
-            </div>
+          <div className="space-y-4">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaq === idx;
 
-            <div className="glass-panel p-6 rounded-xl border border-slate-800">
-              <h4 className="font-bold text-base mb-2">How does the AI Financial Analyst calculate suggestions?</h4>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                All numerical computations (cash flow, shortfall, emergency buffer, and loan schedules) are executed deterministically by our mathematical backend engine in integer paise. The AI provides context, explanations, and Indian investment instrument scenarios without inventing figures.
-              </p>
-            </div>
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl bg-[#090E18] border border-white/[0.08] overflow-hidden transition-all"
+                >
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full p-5 text-left flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <span className="text-base font-bold text-white font-sans">{faq.q}</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
+                        isOpen ? 'rotate-180 text-[#05DF85]' : ''
+                      }`}
+                    />
+                  </button>
 
-            <div className="glass-panel p-6 rounded-xl border border-slate-800">
-              <h4 className="font-bold text-base mb-2">Is payment billing live or test mode?</h4>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                During development, all payments run safely in Razorpay Test Mode with mock billing adapters. No real financial cards are charged.
-              </p>
-            </div>
+                  {isOpen && (
+                    <div className="px-5 pb-5 pt-1 text-sm text-slate-400 leading-relaxed border-t border-white/[0.04]">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-20 border-t border-slate-900 bg-slate-950/60">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Get in Touch</h2>
-            <p className="text-3xl font-extrabold">Contact the FinPilot Team</p>
-            <p className="text-sm text-slate-400 mt-2">Have a question or feedback? Send us a message.</p>
-          </div>
+      {/* ========================================================================= */}
+      {/* 8. BOTTOM CALL TO ACTION BANNER */}
+      {/* ========================================================================= */}
+      <section className="py-20 relative">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl bg-gradient-to-br from-[#0D1B2A] via-[#09111E] to-[#060A12] border border-[#05DF85]/30 p-8 sm:p-14 text-center relative overflow-hidden shadow-glow-mint">
+            {/* Background sparkle effect */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#05DF85]/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          <form onSubmit={handleContactSubmit} className="glass-panel p-8 rounded-2xl border border-slate-800 space-y-4">
-            {contactStatus.message && (
-              <div
-                className={`p-3 rounded-lg text-sm ${
-                  contactStatus.state === 'success'
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                }`}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#05DF85]/10 border border-[#05DF85]/30 text-[#05DF85] text-xs font-semibold mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#05DF85]"></span>
+              <span>Built for ambitious wealth</span>
+            </div>
+
+            <h2 className="text-3xl sm:text-5xl font-serif text-white tracking-tight max-w-2xl mx-auto mb-4 leading-tight">
+              Take command of your financial trajectory today.
+            </h2>
+
+            <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
+              Join thousands of forward-thinking individuals who use FinPilot to build sustainable liquidity, eliminate debt, and grow net worth.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-[#05DF85] hover:bg-[#04C976] text-slate-950 font-extrabold text-sm uppercase tracking-wider transition-all shadow-glow-mint hover:scale-[1.02]"
               >
-                {contactStatus.message}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Your Name</label>
-                <input
-                  type="text"
-                  required
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Khushi Zanora"
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="khushi@example.com"
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                <span>Get Started with FinPilot</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </Link>
+              <a
+                href="#faq"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#0D1422] hover:bg-[#121B2B] text-slate-200 font-semibold text-sm border border-white/[0.08]"
+              >
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <span>Schedule a Consultation</span>
+              </a>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Subject</label>
-              <input
-                type="text"
-                required
-                value={contactSubject}
-                onChange={(e) => setContactSubject(e.target.value)}
-                placeholder="Product Inquiry / Feature Request"
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Message</label>
-              <textarea
-                rows={4}
-                required
-                value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
-                placeholder="How can we assist you?"
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={contactStatus.state === 'loading'}
-              className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>{contactStatus.state === 'loading' ? 'Sending...' : 'Send Message'}</span>
-            </button>
-          </form>
+          </div>
         </div>
       </section>
 
