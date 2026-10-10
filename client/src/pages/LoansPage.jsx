@@ -138,35 +138,47 @@ export default function LoansPage() {
   // Real amortization preview for selected loan
   const generateSchedule = (loan) => {
     if (!loan) return [];
+    const balance = loan.remainingPrincipalPaise ?? loan.outstandingBalancePaise ?? loan.originalPrincipalPaise ?? loan.principalPaise ?? 0;
+    if (loan.status === 'closed' || balance <= 0) return [];
+
     const schedule = [];
-    let balance = loan.outstandingBalancePaise || loan.principalPaise;
-    const monthlyRate = loan.annualInterestRate / 12 / 100;
-    const baseEmi = loan.emiPaise;
+    let currentBalance = balance;
+    const rate = loan.annualInterestRatePercent ?? loan.annualInterestRate ?? 0;
+    const monthlyRate = rate > 0 ? (rate / 100) / 12 : 0;
+    const baseEmi = loan.emiPaise || 0;
 
     for (let i = 1; i <= 6; i++) {
-      if (balance <= 0) break;
-      const interest = Math.round(balance * monthlyRate);
-      const principalPart = Math.min(balance, baseEmi - interest);
-      const closing = Math.max(0, balance - principalPart);
+      if (currentBalance <= 0) break;
+      const interest = monthlyRate === 0 ? 0 : Math.round(currentBalance * monthlyRate);
+      let principalPart = Math.min(currentBalance, Math.max(0, baseEmi - interest));
+      let emiForMonth = principalPart + interest;
+
+      if (principalPart >= currentBalance || baseEmi >= currentBalance + interest) {
+        principalPart = currentBalance;
+        emiForMonth = principalPart + interest;
+      }
+
+      const closing = Math.max(0, currentBalance - principalPart);
 
       schedule.push({
         inst: `#${i}`,
-        open: balance,
-        emi: baseEmi,
+        open: currentBalance,
+        emi: emiForMonth,
         principal: principalPart,
         interest,
         close: closing
       });
 
-      balance = closing;
+      currentBalance = closing;
     }
     return schedule;
   };
 
   const schedule = generateSchedule(selectedLoan);
 
-  const totalOutstandingPaise = loans.reduce((acc, l) => acc + (l.outstandingBalancePaise || l.principalPaise || 0), 0);
-  const totalMonthlyEmiPaise = loans.reduce((acc, l) => acc + (l.emiPaise || 0), 0);
+  const activeLoans = loans.filter((l) => l.status === 'active' && (l.remainingPrincipalPaise ?? l.outstandingBalancePaise ?? l.originalPrincipalPaise ?? 0) > 0);
+  const totalOutstandingPaise = activeLoans.reduce((acc, l) => acc + (l.remainingPrincipalPaise ?? l.outstandingBalancePaise ?? l.originalPrincipalPaise ?? 0), 0);
+  const totalMonthlyEmiPaise = activeLoans.reduce((acc, l) => acc + (l.emiPaise || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col bg-[#05080E] text-slate-100 font-sans min-h-screen">
@@ -211,7 +223,7 @@ export default function LoansPage() {
             <div className="text-[11px] font-mono uppercase text-slate-400 mb-1">TOTAL OUTSTANDING DEBT</div>
             <div className="text-2xl font-mono font-bold text-white">{formatCurrency(totalOutstandingPaise)}</div>
             <div className="text-[10px] font-mono text-slate-500 mt-2">
-              {loans.length} active loan liabilities
+              {activeLoans.length} active loan {activeLoans.length === 1 ? 'liability' : 'liabilities'}
             </div>
           </div>
 
@@ -264,6 +276,10 @@ export default function LoansPage() {
             <div className="lg:col-span-5 space-y-3">
               {loans.map((l) => {
                 const isSelected = selectedLoan && selectedLoan._id === l._id;
+                const outstanding = l.remainingPrincipalPaise ?? l.outstandingBalancePaise ?? l.originalPrincipalPaise ?? l.principalPaise ?? 0;
+                const rate = l.annualInterestRatePercent ?? l.annualInterestRate ?? 0;
+                const isPaidOff = l.status === 'closed' || outstanding === 0;
+
                 return (
                   <div
                     key={l._id}
@@ -276,9 +292,16 @@ export default function LoansPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-white">{l.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-white">{l.name}</h4>
+                          {isPaidOff && (
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-[#05DF85] border border-emerald-500/30">
+                              PAID OFF
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] font-mono text-slate-400">
-                          {l.lender} • {l.annualInterestRate}% p.a.
+                          {l.lender || 'Bank'} • {rate}% p.a. • {l.tenureMonths} mo
                         </div>
                       </div>
 
@@ -297,11 +320,13 @@ export default function LoansPage() {
                     <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase block">Outstanding</span>
-                        <strong className="text-white">{formatCurrency(l.outstandingBalancePaise || l.principalPaise)}</strong>
+                        <strong className="text-white">{formatCurrency(outstanding)}</strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase block">Monthly EMI</span>
-                        <strong className="text-rose-400">-{formatCurrency(l.emiPaise)}</strong>
+                        <strong className={isPaidOff ? 'text-slate-400' : 'text-rose-400'}>
+                          {isPaidOff ? '₹0.00' : formatCurrency(l.emiPaise)}
+                        </strong>
                       </div>
                     </div>
                   </div>
@@ -318,36 +343,48 @@ export default function LoansPage() {
                       Amortization Schedule: {selectedLoan.name}
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Calculated using standard reducing-balance formula ({selectedLoan.annualInterestRate}% p.a.)
+                      Calculated using standard reducing-balance formula ({(selectedLoan.annualInterestRatePercent ?? selectedLoan.annualInterestRate ?? 0)}% p.a.)
                     </p>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs font-mono">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] text-slate-400 text-[10px] uppercase">
-                          <th className="py-2">Month</th>
-                          <th className="py-2">Opening</th>
-                          <th className="py-2">EMI</th>
-                          <th className="py-2">Principal</th>
-                          <th className="py-2">Interest</th>
-                          <th className="py-2">Closing</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {schedule.map((s) => (
-                          <tr key={s.inst}>
-                            <td className="py-2.5 font-bold text-white">{s.inst}</td>
-                            <td className="py-2.5 text-slate-300">{formatCurrency(s.open)}</td>
-                            <td className="py-2.5 text-rose-400">{formatCurrency(s.emi)}</td>
-                            <td className="py-2.5 text-[#05DF85]">{formatCurrency(s.principal)}</td>
-                            <td className="py-2.5 text-slate-400">{formatCurrency(s.interest)}</td>
-                            <td className="py-2.5 text-white font-bold">{formatCurrency(s.close)}</td>
+                  {schedule.length === 0 ? (
+                    <div className="p-8 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-[#05DF85] flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-sm font-bold text-white">No Remaining Installments</h4>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                        This loan liability has ₹0.00 outstanding principal. No further EMI payments are scheduled.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs font-mono">
+                        <thead>
+                          <tr className="border-b border-white/[0.06] text-slate-400 text-[10px] uppercase">
+                            <th className="py-2">Month</th>
+                            <th className="py-2">Opening</th>
+                            <th className="py-2">EMI</th>
+                            <th className="py-2">Principal</th>
+                            <th className="py-2">Interest</th>
+                            <th className="py-2">Closing</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.04]">
+                          {schedule.map((s) => (
+                            <tr key={s.inst}>
+                              <td className="py-2.5 font-bold text-white">{s.inst}</td>
+                              <td className="py-2.5 text-slate-300">{formatCurrency(s.open)}</td>
+                              <td className="py-2.5 text-rose-400">{formatCurrency(s.emi)}</td>
+                              <td className="py-2.5 text-[#05DF85]">{formatCurrency(s.principal)}</td>
+                              <td className="py-2.5 text-slate-400">{formatCurrency(s.interest)}</td>
+                              <td className="py-2.5 text-white font-bold">{formatCurrency(s.close)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </>
               )}
             </div>

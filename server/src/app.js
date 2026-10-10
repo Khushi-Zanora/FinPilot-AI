@@ -20,9 +20,18 @@ import billingRoutes from './routes/billingRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import { randomUUID } from 'node:crypto';
 
 export function createApp() {
   const app = express();
+
+  // Request correlation ID tracking for safe tracing and diagnostics
+  app.use((req, res, next) => {
+    const correlationId = req.headers['x-correlation-id'] || randomUUID();
+    req.correlationId = correlationId;
+    res.setHeader('X-Correlation-Id', correlationId);
+    next();
+  });
 
   // Security headers
   app.use(helmet());

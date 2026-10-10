@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -11,6 +11,17 @@ import { SavingsGoal } from '../../src/models/SavingsGoal.js';
 import { Loan } from '../../src/models/Loan.js';
 import { Investment } from '../../src/models/Investment.js';
 import { InsurancePolicy } from '../../src/models/InsurancePolicy.js';
+import { config } from '../../src/config/index.js';
+
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: vi.fn().mockImplementation(() => ({
+    models: {
+      generateContent: vi.fn().mockResolvedValue({
+        text: '### Spending Summary\nBased on your ledger records: You have recorded your expenses.'
+      })
+    }
+  }))
+}));
 
 let mongoServer;
 let app;
@@ -18,6 +29,7 @@ let authCookie;
 let testUserId;
 
 beforeAll(async () => {
+  config.GEMINI_API_KEY = 'test-mock-gemini-key';
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);

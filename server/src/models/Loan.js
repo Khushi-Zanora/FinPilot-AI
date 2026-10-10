@@ -82,9 +82,23 @@ const loanSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+loanSchema.virtual('principalPaise').get(function () {
+  return this.originalPrincipalPaise;
+});
+
+loanSchema.virtual('outstandingBalancePaise').get(function () {
+  return this.remainingPrincipalPaise;
+});
+
+loanSchema.virtual('annualInterestRate').get(function () {
+  return this.annualInterestRatePercent;
+});
 
 loanSchema.index({ userId: 1, status: 1 });
 

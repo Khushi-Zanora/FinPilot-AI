@@ -50,7 +50,7 @@ export const createRecurringSchema = z.object({
     description: z.string().optional().default(''),
     frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).default('monthly'),
     startDate: z.string().datetime().optional().default(() => new Date().toISOString()),
-    nextDueDate: z.string().datetime(),
+    nextDueDate: z.string().datetime().optional().default(() => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()),
     endDate: z.string().datetime().optional().nullable()
   })
 });

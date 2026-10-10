@@ -1,14 +1,37 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { connectTestDb, closeTestDb, clearTestDb } from '../helpers/db.js';
 import { processDueRecurringTransactions, computeNextOccurrence } from '../../src/services/recurringEngine.js';
 import { RecurringTransaction } from '../../src/models/RecurringTransaction.js';
 import { Transaction } from '../../src/models/Transaction.js';
+import { config } from '../../src/config/index.js';
+
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: vi.fn().mockImplementation(() => ({
+    models: {
+      generateContent: vi.fn().mockImplementation(async ({ contents }) => {
+        const textPrompt = typeof contents === 'string' ? contents : JSON.stringify(contents);
+        let text = '### AI Financial Analysis\nBased on your ledger records:';
+        if (textPrompt.includes('spend') || textPrompt.includes('spent')) {
+          text += '\n- Total spent: ₹12,000.00 in Groceries.';
+        } else if (textPrompt.includes('biggest')) {
+          text += '\n- Largest expense: Supermarket Groceries.';
+        } else if (textPrompt.includes('income') || textPrompt.includes('receive')) {
+          text += '\n- Income received: ₹60,000.00.';
+        } else if (textPrompt.includes('invest')) {
+          text += '\n- Recommended options: Fixed Deposits and Sovereign Gold Bonds.';
+        }
+        return { text };
+      })
+    }
+  }))
+}));
 
 let app;
 
 beforeAll(async () => {
+  config.GEMINI_API_KEY = 'test-mock-gemini-key';
   await connectTestDb();
   app = createApp();
 });

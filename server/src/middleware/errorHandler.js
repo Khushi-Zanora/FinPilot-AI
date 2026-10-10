@@ -60,6 +60,7 @@ export function errorHandler(err, req, res, next) {
     error: {
       code: err.code || 'INTERNAL_ERROR',
       message: err.message || 'An unexpected error occurred on the server',
+      correlationId: req.correlationId || null,
       ...(isProd ? {} : { stack: err.stack })
     }
   });

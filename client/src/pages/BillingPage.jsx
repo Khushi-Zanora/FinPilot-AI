@@ -24,8 +24,10 @@ export default function BillingPage() {
   const [upgrading, setUpgrading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // 3rd party subscriptions / recurring bills
+  // 3rd party subscriptions / recurring bills (persisted to backend database)
   const [recurringBills, setRecurringBills] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(false);
+  const [savingBill, setSavingBill] = useState(false);
   const [showAddSubModal, setShowAddSubModal] = useState(false);
   const [subForm, setSubForm] = useState({
     name: '',
@@ -33,6 +35,35 @@ export default function BillingPage() {
     amount: '',
     frequency: 'monthly'
   });
+
+  const loadRecurringBills = async () => {
+    try {
+      setLoadingBills(true);
+      const res = await apiRequest('/transactions/recurring');
+      if (res.success && res.data?.recurrings) {
+        // Filter to expense-type recurring subscriptions
+        const expenses = res.data.recurrings.filter((r) => r.type === 'expense');
+        const formatted = expenses.map((r) => ({
+          id: r._id,
+          name: r.description || r.category,
+          category: r.category,
+          amount: (r.amountPaise || 0) / 100,
+          amountPaise: r.amountPaise || 0,
+          frequency: r.frequency,
+          nextDueDate: r.nextDueDate
+        }));
+        setRecurringBills(formatted);
+      }
+    } catch (err) {
+      console.warn('Failed to load recurring subscriptions:', err);
+    } finally {
+      setLoadingBills(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecurringBills();
+  }, []);
 
   const handleUpgrade = async (planId) => {
     setUpgrading(true);
@@ -75,26 +106,51 @@ export default function BillingPage() {
     }
   };
 
-  const handleAddRecurringBill = (e) => {
+  const handleAddRecurringBill = async (e) => {
     e.preventDefault();
-    if (!subForm.name || !subForm.amount) return;
+    if (!subForm.name.trim() || !subForm.amount || savingBill) return;
 
-    const amt = parseFloat(subForm.amount);
-    const newBill = {
-      id: `rec-${Date.now()}`,
-      name: subForm.name,
-      category: subForm.category,
-      amount: amt,
-      frequency: subForm.frequency
-    };
+    setSavingBill(true);
+    try {
+      const amt = parseFloat(subForm.amount);
+      const amountPaise = Math.round(amt * 100);
 
-    setRecurringBills([...recurringBills, newBill]);
-    setShowAddSubModal(false);
-    setSubForm({ name: '', category: 'Entertainment', amount: '', frequency: 'monthly' });
+      const res = await apiRequest('/transactions/recurring', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'expense',
+          category: subForm.category || 'Entertainment',
+          description: subForm.name.trim(),
+          amountPaise,
+          frequency: subForm.frequency || 'monthly',
+          startDate: new Date().toISOString(),
+          nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        })
+      });
+
+      if (res.success) {
+        setShowAddSubModal(false);
+        setSubForm({ name: '', category: 'Entertainment', amount: '', frequency: 'monthly' });
+        await loadRecurringBills();
+      } else {
+        throw new Error(res.error?.message || 'Failed to save subscription.');
+      }
+    } catch (err) {
+      setMessage(`❌ Failed to save subscription: ${err.message}`);
+    } finally {
+      setSavingBill(false);
+    }
   };
 
-  const handleDeleteRecurring = (id) => {
-    setRecurringBills(recurringBills.filter((b) => b.id !== id));
+  const handleDeleteRecurring = async (id) => {
+    try {
+      const res = await apiRequest(`/transactions/recurring/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        await loadRecurringBills();
+      }
+    } catch (err) {
+      setMessage(`❌ Failed to delete subscription: ${err.message}`);
+    }
   };
 
   const totalMonthlySub = recurringBills.reduce((acc, b) => acc + (b.amount || 0), 0);

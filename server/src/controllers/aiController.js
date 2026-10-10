@@ -132,10 +132,11 @@ export async function sendChatMessage(req, res, next) {
       content: userPrompt
     });
 
-    // Process deterministic financial AI answer
+    // Process genuine Gemini financial AI query grounded in verified records
     const aiResult = await processFinancialQuery({
       userId: req.userId,
-      prompt: userPrompt
+      prompt: userPrompt,
+      correlationId: req.correlationId
     });
 
     // Save assistant response
@@ -161,7 +162,9 @@ export async function sendChatMessage(req, res, next) {
         answer: aiResult.content,
         response: aiResult.content,
         intent: aiResult.intent,
-        structuredData: aiResult.structuredData
+        structuredData: aiResult.structuredData,
+        providerMeta: aiResult.providerMeta,
+        correlationId: req.correlationId
       }
     });
   } catch (err) {

@@ -1,11 +1,23 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { connectTestDb, closeTestDb, clearTestDb } from '../helpers/db.js';
+import { config } from '../../src/config/index.js';
+
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: vi.fn().mockImplementation(() => ({
+    models: {
+      generateContent: vi.fn().mockResolvedValue({
+        text: '### Financial Analysis\nBased on your verified ledger records, your affordability analysis and investment options have been calculated.'
+      })
+    }
+  }))
+}));
 
 let app;
 
 beforeAll(async () => {
+  config.GEMINI_API_KEY = 'test-mock-gemini-key';
   await connectTestDb();
   app = createApp();
 });

@@ -1,6 +1,13 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load server/.env relative to this file's directory, then fall back to cwd
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 const envSchema = z.object({
@@ -22,17 +29,26 @@ const envSchema = z.object({
   AI_PROVIDER: z.string().default('gemini'),
   AI_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),
-  AI_MODEL_NAME: z.string().default('gemini-1.5-flash'),
+  AI_MODEL_NAME: z.string().default('gemini-flash-lite-latest'),
 
   // Notifications
   EMAIL_PROVIDER: z.enum(['mock', 'smtp']).default('mock'),
   FROM_EMAIL: z.string().default('noreply@finpilot.app')
 });
 
+const resolvedApiKey = (process.env.GEMINI_API_KEY || process.env.AI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+let resolvedMongoUri = (process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/finpilot').trim();
+if (resolvedMongoUri.includes('<') || resolvedMongoUri.includes('>')) {
+  resolvedMongoUri = resolvedMongoUri.replace('://<', '://').replace('>:<', ':').replace('>@', '@');
+}
+
 const rawEnv = {
   ...process.env,
-  AI_API_KEY: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
-  AI_PROVIDER: process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY || process.env.AI_API_KEY ? 'gemini' : 'gemini')
+  MONGODB_URI: resolvedMongoUri,
+  AI_API_KEY: resolvedApiKey,
+  GEMINI_API_KEY: resolvedApiKey,
+  AI_PROVIDER: process.env.AI_PROVIDER || 'gemini',
+  AI_MODEL_NAME: process.env.AI_MODEL_NAME || 'gemini-flash-lite-latest'
 };
 
 const parsedEnv = envSchema.safeParse(rawEnv);
@@ -42,4 +58,8 @@ if (!parsedEnv.success) {
   process.exit(1);
 }
 
-export const config = parsedEnv.data;
+export const config = {
+  ...parsedEnv.data,
+  isAiConfigured: Boolean(resolvedApiKey)
+};
+

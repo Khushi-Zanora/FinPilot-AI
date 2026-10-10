@@ -1,7 +1,19 @@
+import dns from 'dns';
+
+// Ensure SRV records for mongodb+srv:// resolve reliably on Windows / restrictive ISP DNS
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (_) {}
+
 import mongoose from 'mongoose';
 import { createApp } from './app.js';
 import { config } from './config/index.js';
 import { processDueRecurringTransactions } from './services/recurringEngine.js';
+
+function maskMongoUri(uri) {
+  if (!uri) return '';
+  return uri.replace(/\/\/(.*?)@/, '//***:***@');
+}
 
 async function startServer() {
   let mongoMemoryServerInstance = null;
@@ -10,22 +22,54 @@ async function startServer() {
   try {
     let mongoUri = config.MONGODB_URI;
 
-    try {
-      console.log(`Connecting to MongoDB at ${mongoUri}...`);
-      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2500 });
-      console.log('✅ Connected to MongoDB successfully.');
-    } catch (dbErr) {
-      if (config.NODE_ENV !== 'production') {
-        console.warn('⚠️ Local MongoDB not detected. Initializing in-memory MongoDB server for development...');
-        const { MongoMemoryServer } = await import('mongodb-memory-server');
-        mongoMemoryServerInstance = await MongoMemoryServer.create();
-        mongoUri = mongoMemoryServerInstance.getUri();
-        await mongoose.connect(mongoUri);
-        console.log('✅ In-memory MongoDB connected successfully at:', mongoUri);
-      } else {
-        throw dbErr;
+    // Detect and sanitize accidental angle brackets from template strings (e.g. <username>:<password>)
+    if (mongoUri.includes('<') || mongoUri.includes('>')) {
+      console.warn('⚠️ Warning: MONGODB_URI contains placeholder angle brackets (< or >). Sanitizing automatically...');
+      mongoUri = mongoUri.replace('://<', '://').replace('>:<', ':').replace('>@', '@');
+    }
+
+    const isAtlasOrRemote = mongoUri.startsWith('mongodb+srv://') || (!mongoUri.includes('127.0.0.1') && !mongoUri.includes('localhost'));
+    const isExplicitlyConfigured = Boolean(process.env.MONGODB_URI);
+
+    // Configure public DNS resolvers for mongodb+srv on Windows if needed
+    if (mongoUri.startsWith('mongodb+srv://')) {
+      try {
+        const dns = await import('dns');
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+      } catch (_) {
+        // Continue with system resolver if setServers fails
       }
     }
+
+    try {
+      console.log(`Connecting to MongoDB at ${maskMongoUri(mongoUri)}...`);
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 15000, maxPoolSize: 2 });
+      console.log('✅ Connected to MongoDB Atlas/Database successfully.');
+    } catch (dbErr) {
+      if (isAtlasOrRemote || isExplicitlyConfigured) {
+        console.error('\n❌ CRITICAL: Failed to connect to MongoDB Atlas / Remote Database at:', maskMongoUri(mongoUri));
+        console.error('Error Code:', dbErr.code || dbErr.name || 'CONNECTION_FAILED');
+        console.error('Error Message:', dbErr.message);
+        console.error('\nActionable Troubleshooting Steps:');
+        console.error('1. Check MONGODB_URI in server/.env: verify username and password are correct and special characters are URL-encoded.');
+        console.error('2. Ensure angle brackets (< and >) are NOT included around the username or password.');
+        console.error('3. Check MongoDB Atlas -> Network Access: ensure your current IP address (or 0.0.0.0/0 for development) is added to the IP Access List.');
+        console.error('4. Check MongoDB Atlas -> Database Access: ensure the database user exists and has readWrite permissions.');
+        console.error('\nServer startup aborted to prevent silent fallback to ephemeral in-memory storage.\n');
+        process.exit(1);
+      }
+
+        if (config.NODE_ENV !== 'production') {
+          console.warn('⚠️ Local MongoDB not detected and no remote URI configured. Initializing in-memory MongoDB server for development...');
+          const { MongoMemoryServer } = await import('mongodb-memory-server');
+          mongoMemoryServerInstance = await MongoMemoryServer.create();
+          mongoUri = mongoMemoryServerInstance.getUri();
+          await mongoose.connect(mongoUri);
+          console.log('✅ In-memory MongoDB connected successfully at:', mongoUri);
+        } else {
+          throw dbErr;
+        }
+      }
 
     // Auto-seed default testing account in development if not present
     if (config.NODE_ENV !== 'production') {
