@@ -83,7 +83,7 @@ async function startServer() {
 
     const app = createApp();
 
-    const server = app.listen(config.PORT, () => {
+    const server = app.listen(config.PORT, '0.0.0.0', () => {
       console.log(`🚀 FinPilot Backend Server running on port ${config.PORT} [${config.NODE_ENV}]`);
       console.log(`📡 API Base: http://localhost:${config.PORT}/api/v1`);
     });
